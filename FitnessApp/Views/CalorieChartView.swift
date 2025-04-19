@@ -110,68 +110,6 @@ extension CalorieChartView {
     }
 }
 
-struct AddCaloriesSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var userManager: UserManager
-    
-    @State private var calories: Double = 0
-    @State private var mealType: CalorieRecord.MealType = .breakfast
-    @State private var description: String = ""
-    @State private var date = Date()
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    Picker("Meal", selection: $mealType) {
-                        ForEach(CalorieRecord.MealType.allCases, id: \.self) { type in
-                            Text(type.rawValue.capitalized).tag(type)
-                        }
-                    }
-                    
-                    DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
-                    
-                    HStack {
-                        Text("Calories")
-                        Spacer()
-                        TextField("Amount", value: $calories, format: .number)
-                            .multilineTextAlignment(.trailing)
-                            .keyboardType(.decimalPad)
-                        Text("kcal")
-                    }
-                    
-                    TextField("Description (optional)", text: $description, axis: .vertical)
-                        .lineLimit(3)
-                }
-            }
-            .navigationTitle("Add Calories")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        let record = CalorieRecord(
-                            calories: calories,
-                            mealType: mealType,
-                            description: description.isEmpty ? nil : description,
-                            date: date
-                        )
-                        userManager.user.calorieHistory.append(record)
-                        userManager.saveUser()
-                        dismiss()
-                    }
-                    .disabled(calories <= 0)
-                }
-            }
-        }
-    }
-}
-
 #Preview {
     CalorieChartView()
         .environmentObject(UserManager())

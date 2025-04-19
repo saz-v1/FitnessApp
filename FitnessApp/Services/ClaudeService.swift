@@ -1,7 +1,8 @@
 import Foundation
+import SwiftUI
 
 // Service class to handle communication with Claude API
-class ClaudeService {
+class ClaudeService: ObservableObject {
     // Singleton instance for app-wide access
     static let shared = ClaudeService()
     
