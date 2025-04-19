@@ -74,3 +74,6 @@ iOSInjectionProject/
 
 # macOS
 .DS_Store
+
+# Configuration files
+Config.xcconfig

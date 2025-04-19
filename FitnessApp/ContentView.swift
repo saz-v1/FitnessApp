@@ -21,6 +21,12 @@ struct ContentView: View {
                     Label("Workouts", systemImage: "figure.run")
                 }
             
+            // Food tracking tab
+            FoodTrackingView()
+                .tabItem {
+                    Label("Food", systemImage: "fork.knife")
+                }
+            
             // User profile and settings tab
             ProfileView()
                 .tabItem {
