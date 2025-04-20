@@ -4,6 +4,7 @@ struct ProfileView: View {
     @EnvironmentObject var userManager: UserManager
     @FocusState private var focusedField: Field?
     @StateObject private var healthKitManager = HealthKitManager.shared
+    @StateObject private var healthKitService = HealthKitService.shared
     
     enum Field {
         case height, weight, goalWeight, age
@@ -154,38 +155,35 @@ struct ProfileView: View {
         Section {
             Button(action: {
                 Task {
-                    do {
-                        try await healthKitManager.requestAuthorization()
-                        await healthKitManager.fetchTodaysHealthData()
-                        await healthKitManager.fetchLatestWeight()
-                        await healthKitManager.fetchLatestHeight()
-                        await healthKitManager.syncWorkouts()
-                    } catch {
-                        print("Failed to sync with HealthKit: \(error)")
-                    }
+                    await healthKitService.syncWithHealthKit()
                 }
             }) {
                 HStack {
                     Image(systemName: "arrow.triangle.2.circlepath")
                     Text("Sync with Health")
-                    
-                    if !healthKitManager.isAuthorized {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundColor(.yellow)
+                    Spacer()
+                    if healthKitService.isSyncing {
+                        ProgressView()
                     }
                 }
             }
+            .disabled(healthKitService.isSyncing)
             
-            if !healthKitManager.isAuthorized {
-                Text("Authorization required to sync with Health app")
+            if let lastSync = healthKitService.lastSyncDate {
+                Text("Last synced: \(lastSync.formatted())")
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+            
+            if let error = healthKitService.syncError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
             }
         } header: {
             Text("Health Integration")
         } footer: {
-            Text("Sync your weight, height, workouts, and activity data with the Health app")
-                .font(.caption)
+            Text("Sync your weight data with Apple Health to keep your records up to date.")
         }
     }
 }
@@ -205,4 +203,9 @@ private func getActivityLevelDescription(_ level: User.ActivityLevel) -> String 
     case .extraActive:
         return "Very hard exercise & physical job"
     }
+}
+
+#Preview {
+    ProfileView()
+        .environmentObject(UserManager())
 } 

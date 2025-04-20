@@ -4,5 +4,9 @@
 <dict>
 	<key>CLAUDE_API_KEY</key>
 	<string>$(CLAUDE_API_KEY)</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>We need access to your weight data to track your progress and provide personalized insights.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>We need permission to save your weight measurements to help track your progress.</string>
 </dict>
 </plist>

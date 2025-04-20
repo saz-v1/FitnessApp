@@ -1,23 +1,62 @@
 import SwiftUI
 import Charts
 
+/// A view that displays a calorie history chart with interactive features
 struct CalorieChartView: View {
+    // MARK: - Properties
+    
+    /// Reference to the user manager for accessing user data
     @EnvironmentObject var userManager: UserManager
+    
+    /// Controls the presentation of the add calories sheet
     @State private var isAddingCalories = false
+    
+    /// Tracks the current scroll position in the chart
+    @State private var scrollPosition: Date?
+    
+    /// Whether to show annotations on the chart
     let showAnnotations: Bool
     
-    var dailyCalories: [Date: Double] {
-        Dictionary(grouping: userManager.user.calorieHistory) { record in
-            Calendar.current.startOfDay(for: record.date)
-        }.mapValues { records in
-            records.reduce(0) { $0 + $1.calories }
-        }
+    // MARK: - Initialization
+    
+    init(showAnnotations: Bool = false) {
+        self.showAnnotations = showAnnotations
     }
+    
+    // MARK: - Computed Properties
+    
+    /// Calculates the Y-axis range for the chart based on calorie data
+    private var calorieRange: ClosedRange<Double> {
+        let calories = userManager.user.calorieHistory.map { $0.calories }
+            .filter { !$0.isNaN && $0.isFinite }
+        
+        if calories.isEmpty {
+            return 0...3000 // Default range if no data
+        }
+        
+        let maxCalories = (calories.max() ?? 3000) + 500
+        return 0...maxCalories
+    }
+    
+    /// Groups calorie records by day for the bar chart
+    private var dailyCalories: [(date: Date, calories: Double)] {
+        let calendar = Calendar.current
+        let groupedByDay = Dictionary(grouping: userManager.user.calorieHistory) { record in
+            calendar.startOfDay(for: record.date)
+        }
+        
+        return groupedByDay.map { (date, records) in
+            let totalCalories = records.reduce(0) { $0 + $1.calories }
+            return (date: date, calories: totalCalories)
+        }.sorted { $0.date < $1.date }
+    }
+    
+    // MARK: - Body
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Calorie Intake")
+                Text("Calorie History")
                     .font(.headline)
                 
                 Spacer()
@@ -28,90 +67,122 @@ struct CalorieChartView: View {
                 }
             }
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Daily Target")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text("\(Int(userManager.calculateDailyCalories())) kcal")
-                    .font(.title2)
-                    .bold()
-            }
-            
-            if dailyCalories.isEmpty {
+            if userManager.user.calorieHistory.isEmpty {
                 Text("No calorie records yet")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
             } else {
                 Chart {
-                    ForEach(Array(dailyCalories.keys.sorted()), id: \.self) { date in
+                    // Bar chart for daily calories
+                    ForEach(dailyCalories, id: \.date) { day in
                         BarMark(
-                            x: .value("Date", date),
-                            y: .value("Calories", dailyCalories[date] ?? 0)
+                            x: .value("Date", day.date),
+                            y: .value("Calories", day.calories)
                         )
-                        .foregroundStyle(.green)
+                        .foregroundStyle(
+                            .linearGradient(
+                                colors: [.orange.opacity(0.7), .orange.opacity(0.3)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .cornerRadius(4)
                     }
                     
                     // Maintenance calories line
-                    RuleMark(
-                        y: .value("Maintenance", userManager.calculateDailyCalories())
-                    )
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                    .foregroundStyle(.orange)
-                    .annotation(position: .trailing, alignment: .leading) {
-                        if showAnnotations {
+                    if showAnnotations {
+                        RuleMark(
+                            y: .value("Maintenance", userManager.calculateDailyCalories())
+                        )
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                        .foregroundStyle(.orange)
+                        .annotation(position: .trailing) {
                             Text("Maintenance")
                                 .font(.caption)
                                 .foregroundColor(.orange)
+                                .padding(4)
+                                .background(Color(.systemBackground))
+                                .cornerRadius(4)
                         }
-                    }
-                    
-                    // Goal-adjusted target line
-                    if let goalTarget = userManager.calculateWeeklyCalorieTarget() {
-                        RuleMark(
-                            y: .value("Goal Target", goalTarget)
-                        )
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                        .foregroundStyle(.red)
-                        .annotation(position: .trailing, alignment: .leading) {
-                            if showAnnotations {
+                        
+                        // Goal-adjusted target line if available
+                        if let goalTarget = userManager.calculateWeeklyCalorieTarget() {
+                            RuleMark(
+                                y: .value("Goal Target", goalTarget)
+                            )
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                            .foregroundStyle(.red)
+                            .annotation(position: .trailing) {
                                 Text("Goal Target")
                                     .font(.caption)
                                     .foregroundColor(.red)
+                                    .padding(4)
+                                    .background(Color(.systemBackground))
+                                    .cornerRadius(4)
                             }
                         }
                     }
                 }
+                .frame(height: 200)
+                .chartYScale(domain: calorieRange)
+                
+                // X-axis configuration
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 7)) { value in
-                        AxisValueLabel(format: .dateTime.weekday())
+                    AxisMarks(values: .automatic(desiredCount: 12)) { value in
+                        AxisGridLine()
+                        AxisValueLabel(format: .dateTime.month().day())
+                            .font(.caption)
                     }
                 }
+                
+                // Y-axis configuration
                 .chartYAxis {
                     AxisMarks { value in
+                        AxisGridLine()
                         AxisValueLabel {
-                            if let calories = value.as(Double.self) {
+                            if let calories = value.as(Double.self),
+                               !calories.isNaN && calories.isFinite {
                                 Text("\(Int(calories))")
+                                    .font(.caption)
                             }
                         }
                     }
                 }
+                
+                // Enable horizontal scrolling
+                .chartXSelection(value: $scrollPosition)
+                .chartScrollableAxes(.horizontal)
+                .chartXScale(domain: getDateRange())
             }
         }
         .sheet(isPresented: $isAddingCalories) {
             AddCaloriesSheet()
         }
     }
-}
-
-extension CalorieChartView {
-    init(showAnnotations: Bool = false) {
-        self.showAnnotations = showAnnotations
+    
+    // MARK: - Helper Methods
+    
+    /// Calculates the date range for the X-axis with appropriate padding
+    private func getDateRange() -> ClosedRange<Date> {
+        let sortedRecords = userManager.user.calorieHistory.sorted(by: { $0.date < $1.date })
+        
+        // If no records, show last month
+        guard let firstDate = sortedRecords.first?.date,
+              let lastDate = sortedRecords.last?.date else {
+            return Calendar.current.date(byAdding: .month, value: -1, to: Date())!...Date()
+        }
+        
+        // Add 7 days padding on the start, but don't go beyond current date
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: firstDate)!
+        let endDate = min(Calendar.current.date(byAdding: .day, value: 7, to: lastDate)!, Date())
+        
+        return startDate...endDate
     }
 }
 
 #Preview {
     CalorieChartView()
         .environmentObject(UserManager())
+        .frame(height: 300)
         .padding()
 } 

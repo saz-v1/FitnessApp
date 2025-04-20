@@ -50,6 +50,9 @@ struct CalorieDetailView: View {
                         }
                     }
                 }
+                .padding(16)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 
                 // Add New Entry Button
                 Button(action: { isAddingCalories = true }) {
@@ -65,8 +68,17 @@ struct CalorieDetailView: View {
                 }
                 
                 // Expanded Chart
-                CalorieChartView(showAnnotations: true)
-                    .frame(height: 300)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Calorie Trend")
+                        .font(.headline)
+                        .padding(.horizontal, 16)
+                    
+                    CalorieChartView(showAnnotations: true)
+                        .frame(height: 300)
+                        .padding(16)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                }
                 
                 // Today's Meals
                 if !todaysMeals.isEmpty {
@@ -82,6 +94,9 @@ struct CalorieDetailView: View {
                             MealRow(meal: meal)
                         }
                     }
+                    .padding(16)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 }
             }
             .padding()

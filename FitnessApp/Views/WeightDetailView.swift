@@ -1,12 +1,23 @@
 import SwiftUI
 import Charts
+import HealthKit
 
+/// A view that displays detailed weight history with an interactive chart
 struct WeightDetailView: View {
+    // MARK: - Properties
+    
+    /// Reference to the user manager for accessing user data
     @EnvironmentObject var userManager: UserManager
-    @Environment(\.dismiss) var dismiss
+    
+    /// Controls the presentation of the add weight sheet
     @State private var isAddingWeight = false
     
-    // Compute the Y-axis range based on weight data
+    /// Tracks the current scroll position in the chart
+    @State private var scrollPosition: Date?
+    
+    // MARK: - Computed Properties
+    
+    /// Calculates the Y-axis range for the chart based on weight data
     private var weightRange: ClosedRange<Double> {
         let weights = userManager.user.weightHistory.map { $0.weight }
             .filter { !$0.isNaN && $0.isFinite }
@@ -16,7 +27,7 @@ struct WeightDetailView: View {
         if allWeights.isEmpty {
             let currentWeight = userManager.user.weight
             guard !currentWeight.isNaN && currentWeight.isFinite else {
-                return 0...100 // Fallback range if current weight is invalid
+                return 0...100
             }
             return (currentWeight - 5)...(currentWeight + 5)
         }
@@ -24,13 +35,14 @@ struct WeightDetailView: View {
         let minWeight = (allWeights.min() ?? 0) - 2
         let maxWeight = (allWeights.max() ?? 100) + 2
         
-        // Ensure we have valid bounds
         if minWeight.isNaN || maxWeight.isNaN || minWeight >= maxWeight {
-            return 0...100 // Fallback range if calculations result in invalid values
+            return 0...100
         }
         
         return minWeight...maxWeight
     }
+    
+    // MARK: - Body
     
     var body: some View {
         ScrollView {
@@ -97,6 +109,24 @@ struct WeightDetailView: View {
                             .frame(height: 200)
                     } else {
                         Chart {
+                            // Area fill under the line
+                            ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
+                                if !record.weight.isNaN && record.weight.isFinite {
+                                    AreaMark(
+                                        x: .value("Date", record.date),
+                                        y: .value("Weight", record.weight)
+                                    )
+                                    .foregroundStyle(
+                                        .linearGradient(
+                                            colors: [.green.opacity(0.3), .green.opacity(0.1)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+                                }
+                            }
+                            
+                            // Main line
                             ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
                                 if !record.weight.isNaN && record.weight.isFinite {
                                     LineMark(
@@ -104,15 +134,24 @@ struct WeightDetailView: View {
                                         y: .value("Weight", record.weight)
                                     )
                                     .foregroundStyle(.green)
-                                    
+                                    .interpolationMethod(.catmullRom)
+                                    .lineStyle(StrokeStyle(lineWidth: 2))
+                                }
+                            }
+                            
+                            // Data points (simplified)
+                            ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
+                                if !record.weight.isNaN && record.weight.isFinite {
                                     PointMark(
                                         x: .value("Date", record.date),
                                         y: .value("Weight", record.weight)
                                     )
                                     .foregroundStyle(.green)
+                                    .symbolSize(8)
                                 }
                             }
                             
+                            // Goal line
                             if let goalWeight = userManager.user.goalWeight,
                                !goalWeight.isNaN && goalWeight.isFinite {
                                 RuleMark(
@@ -129,23 +168,34 @@ struct WeightDetailView: View {
                         }
                         .frame(height: 300)
                         .chartYScale(domain: weightRange)
+                        
+                        // X-axis configuration
                         .chartXAxis {
-                            AxisMarks(values: .automatic(desiredCount: 7)) { value in
+                            AxisMarks(values: .automatic(desiredCount: 12)) { value in
+                                AxisGridLine()
                                 AxisValueLabel(format: .dateTime.month().day())
-                                    .font(.subheadline)
+                                    .font(.caption)
                             }
                         }
+                        
+                        // Y-axis configuration
                         .chartYAxis {
                             AxisMarks { value in
+                                AxisGridLine()
                                 AxisValueLabel {
                                     if let weight = value.as(Double.self),
                                        !weight.isNaN && weight.isFinite {
                                         Text(String(format: "%.1f", weight))
-                                            .font(.subheadline)
+                                            .font(.caption)
                                     }
                                 }
                             }
                         }
+                        
+                        // Enable horizontal scrolling
+                        .chartXSelection(value: $scrollPosition)
+                        .chartScrollableAxes(.horizontal)
+                        .chartXScale(domain: getDateRange())
                     }
                 }
                 .padding(16)
@@ -170,8 +220,28 @@ struct WeightDetailView: View {
             AddWeightSheet()
         }
     }
+    
+    // MARK: - Helper Methods
+    
+    /// Calculates the date range for the X-axis with appropriate padding
+    private func getDateRange() -> ClosedRange<Date> {
+        let sortedRecords = userManager.user.weightHistory.sorted(by: { $0.date < $1.date })
+        
+        // If no records, show last month
+        guard let firstDate = sortedRecords.first?.date,
+              let lastDate = sortedRecords.last?.date else {
+            return Calendar.current.date(byAdding: .month, value: -1, to: Date())!...Date()
+        }
+        
+        // Add 7 days padding on the start, but don't go beyond current date
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: firstDate)!
+        let endDate = min(Calendar.current.date(byAdding: .day, value: 7, to: lastDate)!, Date())
+        
+        return startDate...endDate
+    }
 }
 
+/// A row displaying a single weight record
 struct WeightHistoryRow: View {
     let record: WeightRecord
     let usesMetric: Bool
