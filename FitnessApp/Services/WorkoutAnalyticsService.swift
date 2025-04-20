@@ -60,6 +60,29 @@ class WorkoutAnalyticsService: ObservableObject {
         return try await claudeService.makeRequest(prompt: prompt)
     }
     
+    /// Get a targeted workout suggestion based on a specific muscle group or focus area
+    func getTargetedWorkoutSuggestion(for user: User, focusArea: String) async throws -> String {
+        let prompt = """
+        Suggest a targeted workout for this user focusing on: \(focusArea)
+        
+        User Profile:
+        - Activity Level: \(user.activityLevel.rawValue)
+        - Available Time: 30-45 minutes
+        - Equipment: Basic home equipment
+        
+        Provide:
+        1. A focused workout targeting the \(focusArea)
+        2. 4-6 specific exercises with clear instructions
+        3. Sets, reps, and rest periods
+        4. Proper form tips for each exercise
+        5. Modifications for different fitness levels
+        
+        Keep it simple, effective, and focused on the \(focusArea).
+        """
+        
+        return try await claudeService.makeRequest(prompt: prompt)
+    }
+    
     // MARK: - Helper Methods
     
     private func calculateWeeklyWorkoutFrequency(workouts: [WorkoutRecord]) -> Int {
@@ -80,8 +103,12 @@ class WorkoutAnalyticsService: ObservableObject {
     
     private func calculateAverageWorkoutDuration(workouts: [WorkoutRecord]) -> Double {
         guard !workouts.isEmpty else { return 0 }
-        let totalDuration = workouts.reduce(0) { $0 + $1.duration }
-        return totalDuration / Double(workouts.count)
+        
+        // Calculate total duration in minutes
+        let totalDurationMinutes = workouts.reduce(0) { $0 + $1.duration }
+        
+        // Calculate average by dividing total duration by number of workouts
+        return Double(totalDurationMinutes) / Double(workouts.count)
     }
     
     private func getRecentProgressSummary(workouts: [WorkoutRecord]) -> String {

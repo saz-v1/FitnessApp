@@ -4,6 +4,10 @@ struct WorkoutLogView: View {
     @EnvironmentObject var userManager: UserManager
     @State private var showingAddWorkout = false
     @State private var showingInsights = false
+    @State private var showingQuickWorkout = false
+    @State private var showingTargetedWorkout = false
+    @State private var selectedWorkout: WorkoutRecord?
+    @State private var showingWorkoutDetail = false
     
     var body: some View {
         NavigationView {
@@ -12,6 +16,11 @@ struct WorkoutLogView: View {
                     Section(header: Text(formatDate(date))) {
                         ForEach(groupedWorkouts[date] ?? []) { workout in
                             WorkoutRow(workout: workout)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedWorkout = workout
+                                    showingWorkoutDetail = true
+                                }
                         }
                         .onDelete { indices in
                             indices.forEach { index in
@@ -31,8 +40,18 @@ struct WorkoutLogView: View {
                             Label("Add Workout", systemImage: "plus")
                         }
                         
-                        Button(action: { showingInsights = true }) {
-                            Label("Workout Insights", systemImage: "chart.bar")
+                        Menu("Workout Tools") {
+                            Button(action: { showingInsights = true }) {
+                                Label("Workout Insights", systemImage: "chart.bar")
+                            }
+                            
+                            Button(action: { showingQuickWorkout = true }) {
+                                Label("Quick Workout", systemImage: "figure.run")
+                            }
+                            
+                            Button(action: { showingTargetedWorkout = true }) {
+                                Label("Targeted Workout", systemImage: "figure.strengthtraining.traditional")
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -48,6 +67,17 @@ struct WorkoutLogView: View {
             }
             .sheet(isPresented: $showingInsights) {
                 WorkoutInsightsView()
+            }
+            .sheet(isPresented: $showingQuickWorkout) {
+                QuickWorkoutView()
+            }
+            .sheet(isPresented: $showingTargetedWorkout) {
+                TargetedWorkoutView()
+            }
+            .sheet(isPresented: $showingWorkoutDetail) {
+                if let workout = selectedWorkout {
+                    WorkoutDetailView(workout: workout)
+                }
             }
         }
     }
@@ -92,16 +122,114 @@ struct WorkoutRow: View {
                 Image(systemName: "clock")
                 Text("\(Int(workout.duration / 60)) minutes")
                 
-                if let notes = workout.notes {
+                Spacer()
+                
+                Image(systemName: "flame")
+                    .foregroundColor(.orange)
+                Text(workout.intensity.rawValue)
+                    .foregroundColor(.secondary)
+                
+                if let calories = workout.caloriesBurned {
                     Spacer()
-                    Text(notes)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    Image(systemName: "bolt")
+                        .foregroundColor(.yellow)
+                    Text("\(calories) cal")
                 }
             }
             .font(.subheadline)
+            
+            if let exercises = workout.exercises, !exercises.isEmpty {
+                Text("\(exercises.count) exercises")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            if let notes = workout.notes {
+                Text(notes)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct WorkoutDetailView: View {
+    let workout: WorkoutRecord
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section(header: Text("Workout Details")) {
+                    DetailRow(title: "Type", value: workout.type.rawValue)
+                    DetailRow(title: "Date", value: workout.date.formatted(date: .long, time: .shortened))
+                    DetailRow(title: "Duration", value: "\(Int(workout.duration / 60)) minutes")
+                    DetailRow(title: "Intensity", value: workout.intensity.rawValue)
+                    if let calories = workout.caloriesBurned {
+                        DetailRow(title: "Calories Burned", value: "\(calories)")
+                    }
+                }
+                
+                if let exercises = workout.exercises, !exercises.isEmpty {
+                    Section(header: Text("Exercises")) {
+                        ForEach(exercises) { exercise in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(exercise.name)
+                                    .font(.headline)
+                                
+                                HStack {
+                                    if let sets = exercise.sets, let reps = exercise.reps {
+                                        Text("\(sets) sets × \(reps) reps")
+                                    }
+                                    
+                                    if let weight = exercise.weight {
+                                        Text("\(Int(weight)) kg")
+                                    }
+                                    
+                                    if let duration = exercise.duration {
+                                        Text("\(Int(duration / 60)) min")
+                                    }
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                
+                if let notes = workout.notes, !notes.isEmpty {
+                    Section(header: Text("Notes")) {
+                        Text(notes)
+                    }
+                }
+            }
+            .navigationTitle("Workout Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct DetailRow: View {
+    let title: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+        }
     }
 }
 

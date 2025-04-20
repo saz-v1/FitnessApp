@@ -1,11 +1,11 @@
 import SwiftUI
 
-struct WorkoutInsightsView: View {
+struct QuickWorkoutView: View {
     @EnvironmentObject var userManager: UserManager
     @StateObject private var analyticsService = WorkoutAnalyticsService.shared
     @Environment(\.dismiss) var dismiss
     
-    @State private var insights: String = ""
+    @State private var workout: String = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
     
@@ -14,7 +14,7 @@ struct WorkoutInsightsView: View {
             VStack(spacing: 16) {
                 if isLoading {
                     Spacer()
-                    ProgressView("Analyzing your workouts...")
+                    ProgressView("Generating quick workout...")
                         .progressViewStyle(CircularProgressViewStyle())
                     Spacer()
                 } else if let error = errorMessage {
@@ -28,40 +28,40 @@ struct WorkoutInsightsView: View {
                             .foregroundColor(.red)
                         Button("Try Again") {
                             Task {
-                                await loadInsights()
+                                await generateWorkout()
                             }
                         }
                         .buttonStyle(.bordered)
                     }
                     .padding()
                     Spacer()
-                } else if !insights.isEmpty {
+                } else if !workout.isEmpty {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text(insights)
+                            Text(workout)
                                 .padding()
                         }
                     }
                 } else {
                     Spacer()
                     ContentUnavailableView(
-                        "No Insights Yet",
-                        systemImage: "chart.bar",
-                        description: Text("Tap refresh to analyze your workout patterns")
+                        "No Quick Workout Yet",
+                        systemImage: "figure.run",
+                        description: Text("Tap generate to get a quick workout suggestion")
                     )
                     Spacer()
                 }
             }
-            .navigationTitle("Workout Insights")
+            .navigationTitle("Quick Workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         Task {
-                            await loadInsights()
+                            await generateWorkout()
                         }
                     }) {
-                        Image(systemName: "arrow.clockwise")
+                        Text("Generate")
                     }
                     .disabled(isLoading)
                 }
@@ -73,17 +73,14 @@ struct WorkoutInsightsView: View {
                 }
             }
         }
-        .task {
-            await loadInsights()
-        }
     }
     
-    private func loadInsights() async {
+    private func generateWorkout() async {
         isLoading = true
         errorMessage = nil
         
         do {
-            insights = try await analyticsService.getWorkoutInsights(for: userManager.user)
+            workout = try await analyticsService.getQuickWorkoutSuggestion(for: userManager.user)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -93,6 +90,6 @@ struct WorkoutInsightsView: View {
 }
 
 #Preview {
-    WorkoutInsightsView()
+    QuickWorkoutView()
         .environmentObject(UserManager())
 } 
