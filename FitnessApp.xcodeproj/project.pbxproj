@@ -33,6 +33,7 @@
 		E742CC1C2DB43891004AB4E9 /* Exceptions for "FitnessApp" folder in "FitnessApp" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Config.xcconfig,
 				Info.plist,
 			);
 			target = E718CAA12D43121300749C78 /* FitnessApp */;
@@ -184,7 +185,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1620;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					E718CAA12D43121300749C78 = {
 						CreatedOnToolsVersion = 16.2;
