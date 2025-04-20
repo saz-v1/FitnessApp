@@ -100,6 +100,70 @@ class ClaudeService: ObservableObject {
             throw ClaudeError.networkError(error)
         }
     }
+    
+    /// Helper method to make API requests to Claude
+    func makeRequest(prompt: String) async throws -> String {
+        // Validate API key
+        guard !apiKey.isEmpty else {
+            print("Error: API key is empty")
+            throw ClaudeError.missingAPIKey
+        }
+        
+        // Prepare the request body
+        let requestBody: [String: Any] = [
+            "model": "claude-3-opus-20240229",
+            "max_tokens": 1000,
+            "messages": [
+                [
+                    "role": "user",
+                    "content": prompt
+                ]
+            ]
+        ]
+        
+        // Create and configure the HTTP request
+        var request = URLRequest(url: URL(string: baseURL)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        
+        do {
+            // Serialize request body to JSON
+            let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+            request.httpBody = jsonData
+            
+            // Make the API request
+            let (data, urlResponse) = try await URLSession.shared.data(for: request)
+            
+            // Handle the response
+            if let httpResponse = urlResponse as? HTTPURLResponse {
+                print("HTTP Status Code: \(httpResponse.statusCode)")
+                
+                if httpResponse.statusCode != 200 {
+                    if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        print("Error response: \(errorJson)")
+                    }
+                    throw ClaudeError.apiError(statusCode: httpResponse.statusCode)
+                }
+            }
+            
+            // Decode the response
+            let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
+            
+            // Extract text from the response
+            if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
+               let text = textBlock.text {
+                return text
+            }
+            
+            throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "No text content found in response")))
+            
+        } catch {
+            print("Error making API request: \(error)")
+            throw ClaudeError.networkError(error)
+        }
+    }
 }
 
 // MARK: - Response Models

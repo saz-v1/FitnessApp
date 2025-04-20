@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutLogView: View {
     @EnvironmentObject var userManager: UserManager
     @State private var showingAddWorkout = false
+    @State private var showingInsights = false
     
     var body: some View {
         NavigationView {
@@ -25,8 +26,16 @@ struct WorkoutLogView: View {
             .navigationTitle("Workouts")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddWorkout = true }) {
-                        Image(systemName: "plus")
+                    Menu {
+                        Button(action: { showingAddWorkout = true }) {
+                            Label("Add Workout", systemImage: "plus")
+                        }
+                        
+                        Button(action: { showingInsights = true }) {
+                            Label("Workout Insights", systemImage: "chart.bar")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
                 
@@ -36,6 +45,9 @@ struct WorkoutLogView: View {
             }
             .sheet(isPresented: $showingAddWorkout) {
                 AddWorkoutSheet()
+            }
+            .sheet(isPresented: $showingInsights) {
+                WorkoutInsightsView()
             }
         }
     }
@@ -48,6 +60,7 @@ struct WorkoutLogView: View {
     }
     
     private func formatDate(_ date: Date) -> String {
+        let calendar = Calendar.current
         if calendar.isDateInToday(date) {
             return "Today"
         } else if calendar.isDateInYesterday(date) {
