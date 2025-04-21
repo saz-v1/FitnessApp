@@ -91,21 +91,26 @@ class WorkoutAnalyticsService: ObservableObject {
     // MARK: - Analytics Methods
     
     /// Calculate the average number of workouts per week
-    private func calculateWeeklyWorkoutFrequency(workouts: [WorkoutRecord]) -> Double {
-        guard !workouts.isEmpty else { return 0 }
+    func calculateWeeklyWorkoutFrequency(workouts: [WorkoutRecord]) -> Double {
+        guard !workouts.isEmpty else { return 0.0 }
         
-        // Group workouts by week
-        let calendar = Calendar.current
-        let groupedByWeek = Dictionary(grouping: workouts) { workout in
-            let components = calendar.dateComponents([.year, .weekOfYear], from: workout.date)
-            return calendar.date(from: components)!
+        // Sort workouts by date
+        let sortedWorkouts = workouts.sorted { $0.date < $1.date }
+        
+        // Get the date range
+        guard let firstWorkout = sortedWorkouts.first,
+              let lastWorkout = sortedWorkouts.last else {
+            return 0.0
         }
         
-        // Calculate average workouts per week
-        let totalWeeks = Double(groupedByWeek.count)
-        let totalWorkouts = Double(workouts.count)
+        // Calculate the number of weeks between first and last workout
+        let calendar = Calendar.current
+        let weeks = calendar.dateComponents([.weekOfYear], 
+                                         from: firstWorkout.date, 
+                                         to: lastWorkout.date).weekOfYear ?? 1
         
-        return totalWeeks > 0 ? totalWorkouts / totalWeeks : 0
+        // Calculate average workouts per week
+        return Double(workouts.count) / Double(max(1, weeks))
     }
     
     /// Find the most common workout type
@@ -154,4 +159,129 @@ class WorkoutAnalyticsService: ObservableObject {
         - Most recent: \(lastWorkout.type.rawValue) on \(lastWorkout.date.formatted(date: .abbreviated, time: .omitted))
         """
     }
+    
+    func calculateWorkoutIntensity(workout: Workout) -> WorkoutIntensity {
+        // Calculate average heart rate percentage of max
+        let maxHeartRate = 220 - Double(UserManager.shared.user.age)
+        let avgHeartRatePercentage = (workout.averageHeartRate / maxHeartRate) * 100
+        
+        // Calculate intensity based on heart rate zones
+        switch avgHeartRatePercentage {
+        case 0..<60:
+            return .low
+        case 60..<70:
+            return .moderate
+        case 70..<80:
+            return .high
+        default:
+            return .veryHigh
+        }
+    }
+    
+    func calculateCaloriesBurned(workout: Workout) -> Int {
+        // Basic calorie calculation based on workout type and duration
+        let baseCaloriesPerMinute: Double
+        
+        switch workout.type {
+        case .strength:
+            baseCaloriesPerMinute = 4.0
+        case .cardio:
+            baseCaloriesPerMinute = 8.0
+        case .flexibility:
+            baseCaloriesPerMinute = 2.0
+        case .hiit:
+            baseCaloriesPerMinute = 10.0
+        }
+        
+        // Adjust for intensity
+        let intensityMultiplier: Double
+        switch workout.intensity {
+        case .low:
+            intensityMultiplier = 0.8
+        case .moderate:
+            intensityMultiplier = 1.0
+        case .high:
+            intensityMultiplier = 1.2
+        case .veryHigh:
+            intensityMultiplier = 1.4
+        }
+        
+        // Calculate total calories
+        let durationInMinutes = workout.duration / 60
+        let calories = baseCaloriesPerMinute * durationInMinutes * intensityMultiplier
+        
+        // Adjust for user's weight
+        let weightMultiplier = UserManager.shared.user.weight / 70.0 // Normalize to 70kg
+        let adjustedCalories = calories * weightMultiplier
+        
+        return Int(adjustedCalories)
+    }
+    
+    func generateWorkoutInsights(workouts: [Workout]) -> [WorkoutInsight] {
+        var insights: [WorkoutInsight] = []
+        
+        // Calculate weekly frequency
+        let weeklyFrequency = calculateWeeklyWorkoutFrequency(workouts: workouts)
+        
+        // Add frequency insight
+        if weeklyFrequency < 3 {
+            insights.append(WorkoutInsight(
+                title: "Increase Workout Frequency",
+                description: "Try to work out at least 3 times per week for optimal results.",
+                type: .suggestion
+            ))
+        } else if weeklyFrequency >= 5 {
+            insights.append(WorkoutInsight(
+                title: "Great Workout Frequency",
+                description: "You're maintaining a consistent workout schedule. Keep it up!",
+                type: .achievement
+            ))
+        }
+        
+        // Analyze workout types
+        let typeCounts = Dictionary(grouping: workouts, by: { $0.type })
+            .mapValues { $0.count }
+        
+        // Check for variety
+        if typeCounts.count < 3 {
+            insights.append(WorkoutInsight(
+                title: "Add Workout Variety",
+                description: "Try incorporating different types of workouts for better overall fitness.",
+                type: .suggestion
+            ))
+        }
+        
+        // Analyze intensity levels
+        let highIntensityWorkouts = workouts.filter { $0.intensity == .high || $0.intensity == .veryHigh }
+        let highIntensityPercentage = Double(highIntensityWorkouts.count) / Double(workouts.count)
+        
+        if highIntensityPercentage < 0.2 {
+            insights.append(WorkoutInsight(
+                title: "Increase Intensity",
+                description: "Try to include more high-intensity workouts in your routine.",
+                type: .suggestion
+            ))
+        }
+        
+        return insights
+    }
+}
+
+struct WorkoutInsight {
+    let title: String
+    let description: String
+    let type: InsightType
+}
+
+enum InsightType {
+    case suggestion
+    case achievement
+    case warning
+}
+
+enum WorkoutIntensity: String, CaseIterable {
+    case low = "Low"
+    case moderate = "Moderate"
+    case high = "High"
+    case veryHigh = "Very High"
 } 

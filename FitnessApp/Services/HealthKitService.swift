@@ -21,7 +21,11 @@ class HealthKitService: ObservableObject {
         let typesToRead: Set<HKObjectType> = [weightType]
         let typesToWrite: Set<HKSampleType> = [weightType]
         
-        try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
+        do {
+            try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
+        } catch {
+            throw HealthKitError.authorizationDenied
+        }
     }
     
     func syncWithHealthKit() async {
@@ -32,16 +36,23 @@ class HealthKitService: ObservableObject {
         
         do {
             try await requestAuthorization()
-            try await fetchWeightHistory()
-            lastSyncDate = Date()
+            let weightRecords = try await fetchWeightHistory()
+            
+            if !weightRecords.isEmpty {
+                UserManager.shared.user.weightHistory = weightRecords
+                UserManager.shared.saveUser()
+                lastSyncDate = Date()
+            }
+        } catch let error as HealthKitError {
+            syncError = error.errorDescription
         } catch {
-            syncError = error.localizedDescription
+            syncError = "Failed to sync with HealthKit: \(error.localizedDescription)"
         }
         
         isSyncing = false
     }
     
-    private func fetchWeightHistory() async throws {
+    private func fetchWeightHistory() async throws -> [WeightRecord] {
         guard HKHealthStore.isHealthDataAvailable() else {
             throw HealthKitError.notAvailable
         }
@@ -53,12 +64,12 @@ class HealthKitService: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKSampleQuery(sampleType: weightType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { (query, samples, error) in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    continuation.resume(throwing: HealthKitError.fetchFailed)
                     return
                 }
                 
                 guard let samples = samples as? [HKQuantitySample] else {
-                    continuation.resume(throwing: HealthKitError.fetchFailed)
+                    continuation.resume(returning: [])
                     return
                 }
                 
@@ -67,11 +78,7 @@ class HealthKitService: ObservableObject {
                     return WeightRecord(weight: weightInKg, date: sample.startDate)
                 }
                 
-                Task { @MainActor in
-                    UserManager.shared.user.weightHistory = weightRecords
-                    UserManager.shared.saveUser()
-                    continuation.resume()
-                }
+                continuation.resume(returning: weightRecords)
             }
             
             healthStore.execute(query)
@@ -87,7 +94,11 @@ class HealthKitService: ObservableObject {
         let weightQuantity = HKQuantity(unit: HKUnit.gramUnit(with: .kilo), doubleValue: weight)
         let sample = HKQuantitySample(type: weightType, quantity: weightQuantity, start: date, end: date)
         
-        try await healthStore.save(sample)
+        do {
+            try await healthStore.save(sample)
+        } catch {
+            throw HealthKitError.saveFailed
+        }
     }
 }
 
@@ -96,17 +107,20 @@ enum HealthKitError: LocalizedError {
     case authorizationDenied
     case fetchFailed
     case saveFailed
+    case noDataAvailable
     
     var errorDescription: String? {
         switch self {
         case .notAvailable:
             return "HealthKit is not available on this device"
         case .authorizationDenied:
-            return "HealthKit authorization was denied"
+            return "HealthKit authorization was denied. Please enable access in Settings."
         case .fetchFailed:
-            return "Failed to fetch data from HealthKit"
+            return "Failed to fetch data from HealthKit. Please try again."
         case .saveFailed:
-            return "Failed to save data to HealthKit"
+            return "Failed to save data to HealthKit. Please try again."
+        case .noDataAvailable:
+            return "No weight data available in HealthKit"
         }
     }
 } 

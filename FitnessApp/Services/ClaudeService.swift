@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Security
 
 // Service class to handle communication with Claude API
 class ClaudeService: ObservableObject {
@@ -7,28 +8,81 @@ class ClaudeService: ObservableObject {
     static let shared = ClaudeService()
     
     // API configuration
-    private let apiKey: String
     private let baseURL = "https://api.anthropic.com/v1/messages"
+    private let keychainService = "com.fitnessapp.claude"
+    private let keychainAccount = "apiKey"
     
     // Private initializer to enforce singleton pattern
     private init() {
-        // Load API key from environment or configuration
-        // In a production app, use a secure keychain or environment variable
-        if let key = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"] {
+        // Try to load API key from keychain
+        if let key = loadAPIKeyFromKeychain() {
             self.apiKey = key
         } else {
-            // Fallback to a placeholder for development
-            // In production, this should throw an error instead
-            self.apiKey = "YOUR_API_KEY_HERE"
-            print("Warning: Claude API key not found in environment. Using placeholder.")
+            // Fallback to environment variable for development
+            if let key = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"] {
+                self.apiKey = key
+                // Save to keychain for future use
+                saveAPIKeyToKeychain(key)
+            } else {
+                self.apiKey = ""
+                print("Warning: Claude API key not found in keychain or environment.")
+            }
         }
     }
     
-    // Main function to estimate calories from food description
+    private var apiKey: String
+    
+    // MARK: - Keychain Methods
+    
+    private func loadAPIKeyFromKeychain() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount,
+            kSecReturnData as String: true
+        ]
+        
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        
+        return key
+    }
+    
+    private func saveAPIKeyToKeychain(_ key: String) {
+        guard let data = key.data(using: .utf8) else { return }
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount,
+            kSecValueData as String: data
+        ]
+        
+        // First try to update existing key
+        let attributes: [String: Any] = [kSecValueData as String: data]
+        var status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        
+        // If no existing key, add new one
+        if status == errSecItemNotFound {
+            status = SecItemAdd(query as CFDictionary, nil)
+        }
+        
+        if status != errSecSuccess {
+            print("Error saving API key to keychain: \(status)")
+        }
+    }
+    
+    // MARK: - API Methods
+    
     func estimateCalories(foodDescription: String) async throws -> Int {
         // Validate API key
-        guard !apiKey.isEmpty && apiKey != "YOUR_API_KEY_HERE" else {
-            print("Error: API key is missing or invalid")
+        guard !apiKey.isEmpty else {
             throw ClaudeError.missingAPIKey
         }
         
@@ -42,8 +96,8 @@ class ClaudeService: ObservableObject {
         
         // Prepare the request body with model and message
         let requestBody: [String: Any] = [
-            "model": "claude-3-opus-20240229", // Using Claude 3 Opus model
-            "max_tokens": 10, // Limit response length
+            "model": "claude-3-opus-20240229",
+            "max_tokens": 10,
             "messages": [
                 [
                     "role": "user",
@@ -52,58 +106,21 @@ class ClaudeService: ObservableObject {
             ]
         ]
         
-        // Create and configure the HTTP request
-        var request = URLRequest(url: URL(string: baseURL)!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        
-        print("Making API request to Claude...")
-        
         do {
-            // Serialize request body to JSON
-            let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
-            request.httpBody = jsonData
-            
-            // Make the API request
-            let (data, urlResponse) = try await URLSession.shared.data(for: request)
-            
-            // Handle the response
-            if let httpResponse = urlResponse as? HTTPURLResponse {
-                print("HTTP Status Code: \(httpResponse.statusCode)")
-                
-                // Print raw response for debugging
-                let responseString = String(data: data, encoding: .utf8) ?? "Unable to convert data to string"
-                print("Raw response: \(responseString)")
-                
-                // Check for HTTP errors
-                if httpResponse.statusCode != 200 {
-                    if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        print("Error response: \(errorJson)")
-                    }
-                    throw ClaudeError.apiError(statusCode: httpResponse.statusCode)
-                }
-            }
-            
-            // Decode the response
-            let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
-            print("Received response from Claude")
+            let response = try await makeAPIRequest(body: requestBody)
             
             // Extract calories from the response
-            if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
+            if let textBlock = response.content.first(where: { $0.type == "text" }),
                let text = textBlock.text,
                let calories = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                print("Estimated calories: \(calories)")
                 return calories
             }
             
-            print("Could not parse calories from response")
-            return -1
+            throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid calorie format in response")))
             
+        } catch let error as ClaudeError {
+            throw error
         } catch {
-            // Handle any errors during the request
-            print("Error making API request: \(error)")
             throw ClaudeError.networkError(error)
         }
     }
@@ -112,7 +129,6 @@ class ClaudeService: ObservableObject {
     func makeRequest(prompt: String) async throws -> String {
         // Validate API key
         guard !apiKey.isEmpty else {
-            print("Error: API key is empty")
             throw ClaudeError.missingAPIKey
         }
         
@@ -128,6 +144,27 @@ class ClaudeService: ObservableObject {
             ]
         ]
         
+        do {
+            let response = try await makeAPIRequest(body: requestBody)
+            
+            // Extract text from the response
+            if let textBlock = response.content.first(where: { $0.type == "text" }),
+               let text = textBlock.text {
+                return text
+            }
+            
+            throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "No text content found in response")))
+            
+        } catch let error as ClaudeError {
+            throw error
+        } catch {
+            throw ClaudeError.networkError(error)
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func makeAPIRequest(body: [String: Any]) async throws -> ClaudeResponse {
         // Create and configure the HTTP request
         var request = URLRequest(url: URL(string: baseURL)!)
         request.httpMethod = "POST"
@@ -135,41 +172,29 @@ class ClaudeService: ObservableObject {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         
-        do {
-            // Serialize request body to JSON
-            let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
-            request.httpBody = jsonData
+        // Serialize request body to JSON
+        let jsonData = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = jsonData
+        
+        // Make the API request
+        let (data, urlResponse) = try await URLSession.shared.data(for: request)
+        
+        // Handle the response
+        if let httpResponse = urlResponse as? HTTPURLResponse {
+            if httpResponse.statusCode == 429 {
+                throw ClaudeError.rateLimitExceeded
+            }
             
-            // Make the API request
-            let (data, urlResponse) = try await URLSession.shared.data(for: request)
-            
-            // Handle the response
-            if let httpResponse = urlResponse as? HTTPURLResponse {
-                print("HTTP Status Code: \(httpResponse.statusCode)")
-                
-                if httpResponse.statusCode != 200 {
-                    if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                        print("Error response: \(errorJson)")
-                    }
-                    throw ClaudeError.apiError(statusCode: httpResponse.statusCode)
+            if httpResponse.statusCode != 200 {
+                if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    print("Error response: \(errorJson)")
                 }
+                throw ClaudeError.apiError(statusCode: httpResponse.statusCode)
             }
-            
-            // Decode the response
-            let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
-            
-            // Extract text from the response
-            if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
-               let text = textBlock.text {
-                return text
-            }
-            
-            throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "No text content found in response")))
-            
-        } catch {
-            print("Error making API request: \(error)")
-            throw ClaudeError.networkError(error)
         }
+        
+        // Decode the response
+        return try JSONDecoder().decode(ClaudeResponse.self, from: data)
     }
 }
 
@@ -177,13 +202,13 @@ class ClaudeService: ObservableObject {
 
 // Structure to decode Claude's API response
 struct ClaudeResponse: Codable {
-    let id: String              // Unique message ID
-    let type: String            // Message type
-    let role: String            // Role of the message sender
-    let content: [ContentBlock] // Array of content blocks
-    let model: String           // Model used for the response
-    let stopReason: String?     // Reason why the response stopped
-    let usage: Usage            // Token usage information
+    let id: String
+    let type: String
+    let role: String
+    let content: [ContentBlock]
+    let model: String
+    let stopReason: String?
+    let usage: Usage
     
     enum CodingKeys: String, CodingKey {
         case id, type, role, content, model
@@ -194,14 +219,14 @@ struct ClaudeResponse: Codable {
 
 // Structure for content blocks in Claude's response
 struct ContentBlock: Codable {
-    let type: String  // Type of content (e.g., "text")
-    let text: String? // The actual content text
+    let type: String
+    let text: String?
 }
 
 // Structure for token usage information
 struct Usage: Codable {
-    let inputTokens: Int   // Number of input tokens used
-    let outputTokens: Int  // Number of output tokens used
+    let inputTokens: Int
+    let outputTokens: Int
     
     enum CodingKeys: String, CodingKey {
         case inputTokens = "input_tokens"
@@ -213,10 +238,11 @@ struct Usage: Codable {
 
 // Custom error types for Claude service
 enum ClaudeError: LocalizedError {
-    case missingAPIKey           // API key is not configured
-    case apiError(statusCode: Int) // API returned an error status
-    case networkError(Error)     // Network-related errors
-    case decodingError(DecodingError) // JSON decoding errors
+    case missingAPIKey
+    case apiError(statusCode: Int)
+    case networkError(Error)
+    case decodingError(DecodingError)
+    case rateLimitExceeded
     
     var errorDescription: String? {
         switch self {
@@ -228,6 +254,8 @@ enum ClaudeError: LocalizedError {
             return "Network error: \(error.localizedDescription)"
         case .decodingError(let error):
             return "Failed to decode API response: \(error.localizedDescription)"
+        case .rateLimitExceeded:
+            return "API rate limit exceeded. Please try again later."
         }
     }
 }
