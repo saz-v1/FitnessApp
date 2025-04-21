@@ -35,7 +35,7 @@ struct TargetedWorkoutView: View {
                                     Text(area)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
-                                        .background(focusArea == area ? Color.blue : Color.gray.opacity(0.2))
+                                        .background(focusArea == area ? Color.green : Color.gray.opacity(0.2))
                                         .foregroundColor(focusArea == area ? .white : .primary)
                                         .cornerRadius(20)
                                 }
