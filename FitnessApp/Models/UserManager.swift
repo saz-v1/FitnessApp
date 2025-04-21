@@ -6,8 +6,10 @@ class UserManager: ObservableObject {
     /// Published user object that will notify views of changes
     @Published var user: User
     
+    /// Singleton instance for app-wide access
     static let shared = UserManager()
     
+    /// Initialize with saved user data or defaults
     init() {
         // Attempt to load saved user data from UserDefaults
         if let savedUser = UserDefaults.standard.data(forKey: "user"),
@@ -72,6 +74,7 @@ class UserManager: ObservableObject {
         case overweight
         case obese
         
+        /// Description of health implications for each BMI category
         var description: String {
             switch self {
             case .underweight:
@@ -114,16 +117,19 @@ class UserManager: ObservableObject {
         return calculateDailyCalories() + dailyCalorieAdjustment
     }
     
+    /// Update user's weight and save changes
     func updateWeight(_ weight: Double) {
         user.weight = weight
         saveUser()
     }
     
+    /// Update user's height and save changes
     func updateHeight(_ height: Double) {
         user.height = height
         saveUser()
     }
     
+    /// Sync workouts from external sources, avoiding duplicates
     func syncWorkouts(_ workouts: [WorkoutRecord]) {
         // Create a set of existing workout identifiers (date + type combination)
         let existingWorkoutIdentifiers = Set(user.workoutHistory.map { 
@@ -142,11 +148,13 @@ class UserManager: ObservableObject {
         }
     }
     
+    /// Delete a specific workout from history
     func deleteWorkout(_ workout: WorkoutRecord) {
         user.workoutHistory.removeAll { $0.id == workout.id }
         saveUser()
     }
     
+    /// Toggle between metric and imperial units
     func toggleUnits() {
         user.toggleUnits()
         saveUser()
@@ -173,7 +181,9 @@ class UserManager: ObservableObject {
     }
 }
 
+/// Extension to add unit conversion functionality to User
 extension User {
+    /// Toggle between metric and imperial units, converting all measurements
     mutating func toggleUnits() {
         if usesMetric {
             // Converting from metric to imperial
@@ -196,6 +206,7 @@ extension User {
 
 // Helper extension for rounding to specific decimal places
 extension Double {
+    /// Round a double to a specific number of decimal places
     func rounded(to places: Int) -> Double {
         let multiplier = pow(10.0, Double(places))
         return (self * multiplier).rounded() / multiplier

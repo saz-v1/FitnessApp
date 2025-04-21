@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     // StateObject ensures UserManager persists for the app's lifetime
     @StateObject private var userManager = UserManager.shared
+    // StateObject for HealthKit integration
     @StateObject private var healthKitManager = HealthKitManager.shared
     
     var body: some View {
@@ -31,6 +32,7 @@ struct ContentView: View {
         .environmentObject(userManager)
         // Set the app's accent color
         .tint(.green)
+        // Request HealthKit authorization when app launches
         .task {
             do {
                 try await healthKitManager.requestAuthorization()
@@ -42,6 +44,7 @@ struct ContentView: View {
     }
 }
 
+// Preview provider for SwiftUI canvas
 #Preview {
     ContentView()
 }

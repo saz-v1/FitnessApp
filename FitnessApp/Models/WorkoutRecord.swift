@@ -1,5 +1,6 @@
 import Foundation
 
+/// Model representing a single workout session
 struct WorkoutRecord: Identifiable, Codable, Equatable {
     let id: UUID
     let date: Date
@@ -10,6 +11,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
     let caloriesBurned: Int?
     let notes: String?
     
+    /// Types of workouts available in the app
     enum WorkoutType: String, Codable, CaseIterable, Identifiable {
         case cardio = "Cardio"
         case strength = "Strength"
@@ -21,6 +23,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         var id: String { rawValue }
     }
     
+    /// Intensity levels for workouts
     enum Intensity: String, Codable, CaseIterable, Identifiable {
         case low = "Low"
         case moderate = "Moderate"
@@ -30,6 +33,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         var id: String { rawValue }
     }
     
+    /// Model representing a single exercise within a workout
     struct Exercise: Codable, Equatable, Identifiable {
         let id: UUID
         let name: String
@@ -38,6 +42,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         let weight: Double? // in kg
         let duration: TimeInterval? // in seconds
         
+        // Initialize with default UUID if not provided
         init(id: UUID = UUID(), name: String, sets: Int? = nil, reps: Int? = nil, weight: Double? = nil, duration: TimeInterval? = nil) {
             self.id = id
             self.name = name
@@ -48,6 +53,7 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         }
     }
     
+    // Initialize with default values for optional parameters
     init(id: UUID = UUID(), date: Date = Date(), type: WorkoutType, duration: TimeInterval, intensity: Intensity = .moderate, exercises: [Exercise]? = nil, caloriesBurned: Int? = nil, notes: String? = nil) {
         self.id = id
         self.date = date

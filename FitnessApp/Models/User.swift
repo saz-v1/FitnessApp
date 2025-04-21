@@ -2,13 +2,20 @@ import Foundation
 
 /// Main user model containing all user-related data and preferences
 struct User: Codable, Equatable {
+    // Basic user measurements
     var height: Double          // User's height in cm or inches
     var weight: Double          // User's weight in kg or pounds
     var age: Int               // User's age
     var gender: Gender          // User's selected gender
+    
+    // User preferences
     var usesMetric: Bool        // Whether to use metric or imperial units
     var activityLevel: ActivityLevel  // User's activity level for calorie calculations
+    
+    // User goals
     var goalWeight: Double?     // Target weight goal in kg or pounds
+    
+    // History records
     var weightHistory: [WeightRecord] // History of weight measurements
     var workoutHistory: [WorkoutRecord] // History of workouts
     var calorieHistory: [CalorieRecord] // History of calorie intake
@@ -32,6 +39,7 @@ struct User: Codable, Equatable {
         
         var id: String { rawValue }
         
+        // Multiplier for BMR calculation based on activity level
         var multiplier: Double {
             switch self {
             case .sedentary: return 1.2
@@ -50,6 +58,7 @@ struct WeightRecord: Codable, Identifiable, Equatable {
     let date: Date
     let weight: Double
     
+    // Initialize with current date if not specified
     init(weight: Double, date: Date = Date()) {
         self.id = UUID()
         self.weight = weight
@@ -65,6 +74,7 @@ struct CalorieRecord: Codable, Identifiable, Equatable {
     let mealType: MealType
     let description: String?
     
+    // Types of meals for categorization
     enum MealType: String, Codable, CaseIterable, Identifiable, Equatable {
         case breakfast = "Breakfast"
         case lunch = "Lunch"
@@ -74,6 +84,7 @@ struct CalorieRecord: Codable, Identifiable, Equatable {
         var id: String { rawValue }
     }
     
+    // Initialize with current date if not specified
     init(calories: Double, mealType: MealType, description: String? = nil, date: Date = Date()) {
         self.id = UUID()
         self.calories = calories

@@ -1,14 +1,28 @@
 import SwiftUI
 
+/// A view that displays and manages the user's profile information, including measurements,
+/// personal details, goals, and HealthKit integration settings.
 struct ProfileView: View {
+    // MARK: - Properties
+    
+    /// Reference to the user manager for accessing and modifying user data
     @EnvironmentObject var userManager: UserManager
+    
+    /// Tracks which text field is currently focused for keyboard management
     @FocusState private var focusedField: Field?
+    
+    /// Manages HealthKit authorization and data access
     @StateObject private var healthKitManager = HealthKitManager.shared
+    
+    /// Service for syncing data with HealthKit
     @StateObject private var healthKitService = HealthKitService.shared
     
+    /// Enum defining the focusable fields in the profile form
     enum Field {
         case height, weight, goalWeight, age
     }
+    
+    // MARK: - Body
     
     var body: some View {
         NavigationView {
@@ -35,6 +49,7 @@ struct ProfileView: View {
     
     // MARK: - View Sections
     
+    /// Section containing user's height and weight measurements with unit system toggle
     private var measurementsSection: some View {
         Section("Measurements") {
             Toggle("Use Metric System", isOn: Binding(
@@ -66,6 +81,7 @@ struct ProfileView: View {
         }
     }
     
+    /// Section containing personal information including gender, age, and activity level
     private var personalSection: some View {
         Section("Personal") {
             Picker("Gender", selection: $userManager.user.gender) {
@@ -123,6 +139,7 @@ struct ProfileView: View {
         }
     }
     
+    /// Section for setting weight goals and displaying calorie recommendations
     private var goalsSection: some View {
         Section("Goals") {
             HStack {
@@ -144,6 +161,7 @@ struct ProfileView: View {
         }
     }
     
+    /// Section displaying the calculated daily calorie target based on user's goals
     private var calorieTargetSection: some View {
         Section("Daily Calorie Target") {
             Text("\(Int(userManager.calculateDailyCalories())) kcal")
@@ -151,6 +169,7 @@ struct ProfileView: View {
         }
     }
     
+    /// Section for managing HealthKit integration and data synchronization
     private var syncSection: some View {
         Section {
             Button(action: {
@@ -190,6 +209,9 @@ struct ProfileView: View {
 
 // MARK: - Helper Functions
 
+/// Returns a descriptive text for each activity level
+/// - Parameter level: The activity level to get the description for
+/// - Returns: A string describing the activity level
 private func getActivityLevelDescription(_ level: User.ActivityLevel) -> String {
     switch level {
     case .sedentary:
