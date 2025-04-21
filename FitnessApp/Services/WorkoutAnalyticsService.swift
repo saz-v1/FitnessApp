@@ -1,7 +1,6 @@
 import Foundation
 
 /// Service class to handle workout analytics and insights
-@MainActor
 class WorkoutAnalyticsService: ObservableObject {
     static let shared = WorkoutAnalyticsService()
     private let claudeService = ClaudeService.shared
@@ -10,14 +9,10 @@ class WorkoutAnalyticsService: ObservableObject {
     
     /// Get personalized workout insights based on user's history and health metrics
     func getWorkoutInsights(for user: User) async throws -> String {
-        // Limit the dataset to the last 3 months for more relevant insights
-        let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
-        let recentWorkouts = user.workoutHistory.filter { $0.date >= threeMonthsAgo }
-        
         // Calculate some basic metrics
-        let weeklyWorkouts = calculateWeeklyWorkoutFrequency(workouts: recentWorkouts)
-        let mostCommonWorkout = findMostCommonWorkoutType(workouts: recentWorkouts)
-        let averageDuration = calculateAverageWorkoutDuration(workouts: recentWorkouts)
+        let weeklyWorkouts = calculateWeeklyWorkoutFrequency(workouts: user.workoutHistory)
+        let mostCommonWorkout = findMostCommonWorkoutType(workouts: user.workoutHistory)
+        let averageDuration = calculateAverageWorkoutDuration(workouts: user.workoutHistory)
         
         let prompt = """
         Analyze this user's workout patterns and provide personalized insights:
@@ -30,7 +25,7 @@ class WorkoutAnalyticsService: ObservableObject {
         - Average Workout Duration: \(Int(averageDuration)) minutes
         
         Recent Progress:
-        \(getRecentProgressSummary(workouts: recentWorkouts))
+        \(getRecentProgressSummary(workouts: user.workoutHistory))
         
         Please provide:
         1. Analysis of current workout patterns
@@ -53,13 +48,13 @@ class WorkoutAnalyticsService: ObservableObject {
         - Available Time: 30-45 minutes
         - Equipment: Basic home equipment
         
-        Please provide:
-        1. A brief warm-up
-        2. 5-7 exercises with sets and reps
-        3. A cool-down
-        4. Estimated calorie burn
+        Provide:
+        1. A simple 3-part workout (warmup, main workout, cooldown)
+        2. 4-6 exercises with clear instructions
+        3. Rest periods and timing
+        4. Modifications for different fitness levels
         
-        Keep it simple and focused on efficiency.
+        Keep it simple and easy to follow.
         """
         
         return try await claudeService.makeRequest(prompt: prompt)
@@ -88,200 +83,63 @@ class WorkoutAnalyticsService: ObservableObject {
         return try await claudeService.makeRequest(prompt: prompt)
     }
     
-    // MARK: - Analytics Methods
+    // MARK: - Helper Methods
     
-    /// Calculate the average number of workouts per week
-    func calculateWeeklyWorkoutFrequency(workouts: [WorkoutRecord]) -> Double {
-        guard !workouts.isEmpty else { return 0.0 }
-        
-        // Sort workouts by date
-        let sortedWorkouts = workouts.sorted { $0.date < $1.date }
-        
-        // Get the date range
-        guard let firstWorkout = sortedWorkouts.first,
-              let lastWorkout = sortedWorkouts.last else {
-            return 0.0
-        }
-        
-        // Calculate the number of weeks between first and last workout
+    private func calculateWeeklyWorkoutFrequency(workouts: [WorkoutRecord]) -> Int {
         let calendar = Calendar.current
-        let weeks = calendar.dateComponents([.weekOfYear], 
-                                         from: firstWorkout.date, 
-                                         to: lastWorkout.date).weekOfYear ?? 1
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date())!
         
-        // Calculate average workouts per week
-        return Double(workouts.count) / Double(max(1, weeks))
+        return workouts.filter { workout in
+            workout.date >= oneWeekAgo
+        }.count
     }
     
-    /// Find the most common workout type
     private func findMostCommonWorkoutType(workouts: [WorkoutRecord]) -> WorkoutRecord.WorkoutType? {
-        guard !workouts.isEmpty else { return nil }
-        
-        // Count occurrences of each workout type
-        let typeCounts = workouts.reduce(into: [:]) { counts, workout in
-            counts[workout.type, default: 0] += 1
-        }
-        
-        // Find the type with the highest count
-        return typeCounts.max(by: { $0.value < $1.value })?.key
+        let types = workouts.map { $0.type }
+        return types.reduce(into: [:]) { counts, type in
+            counts[type, default: 0] += 1
+        }.max(by: { $0.value < $1.value })?.key
     }
     
-    /// Calculate the average duration of workouts in minutes
     private func calculateAverageWorkoutDuration(workouts: [WorkoutRecord]) -> Double {
         guard !workouts.isEmpty else { return 0 }
         
-        let totalDuration = workouts.reduce(0) { $0 + $1.duration }
-        return totalDuration / Double(workouts.count) / 60 // Convert seconds to minutes
+        // Calculate total duration in minutes
+        let totalDurationMinutes = workouts.reduce(0) { $0 + $1.duration }
+        
+        // Calculate average by dividing total duration by number of workouts
+        return Double(totalDurationMinutes) / Double(workouts.count)
     }
     
-    /// Get a summary of recent workout progress
     private func getRecentProgressSummary(workouts: [WorkoutRecord]) -> String {
-        guard !workouts.isEmpty else { return "No recent workouts recorded." }
+        let calendar = Calendar.current
+        let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: Date())!
         
-        // Sort workouts by date
-        let sortedWorkouts = workouts.sorted { $0.date < $1.date }
-        
-        // Get the first and last workout
-        let firstWorkout = sortedWorkouts.first!
-        let lastWorkout = sortedWorkouts.last!
-        
-        // Calculate time span
-        let daysBetween = Calendar.current.dateComponents([.day], from: firstWorkout.date, to: lastWorkout.date).day ?? 0
-        
-        // Calculate total workout time
-        let totalMinutes = Double(workouts.reduce(0) { $0 + $1.duration }) / 60
+        let recentWorkouts = workouts.filter { $0.date >= twoWeeksAgo }
+        // Removed unused weeklyCounts variable
         
         return """
-        - Started tracking \(firstWorkout.date.formatted(date: .abbreviated, time: .omitted))
-        - \(daysBetween) days of activity
-        - \(workouts.count) total workouts
-        - \(Int(totalMinutes)) total minutes of exercise
-        - Most recent: \(lastWorkout.type.rawValue) on \(lastWorkout.date.formatted(date: .abbreviated, time: .omitted))
+        Last 2 weeks:
+        - Total workouts: \(recentWorkouts.count)
+        - Weekly average: \(Double(recentWorkouts.count) / 2.0) workouts
+        - Most active day: \(findMostActiveDay(workouts: recentWorkouts))
         """
     }
     
-    func calculateWorkoutIntensity(workout: Workout) -> WorkoutIntensity {
-        // Calculate average heart rate percentage of max
-        let maxHeartRate = 220 - Double(UserManager.shared.user.age)
-        let avgHeartRatePercentage = (workout.averageHeartRate / maxHeartRate) * 100
-        
-        // Calculate intensity based on heart rate zones
-        switch avgHeartRatePercentage {
-        case 0..<60:
-            return .low
-        case 60..<70:
-            return .moderate
-        case 70..<80:
-            return .high
-        default:
-            return .veryHigh
+    private func findMostActiveDay(workouts: [WorkoutRecord]) -> String {
+        let calendar = Calendar.current
+        let dayCounts = workouts.reduce(into: [Int: Int]()) { counts, workout in
+            let weekday = calendar.component(.weekday, from: workout.date)
+            counts[weekday, default: 0] += 1
         }
+        
+        guard let mostActiveDay = dayCounts.max(by: { $0.value < $1.value })?.key else {
+            return "No data"
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "EEEE"
+        let date = calendar.date(from: DateComponents(weekday: mostActiveDay))!
+        return dateFormatter.string(from: date)
     }
-    
-    func calculateCaloriesBurned(workout: Workout) -> Int {
-        // Basic calorie calculation based on workout type and duration
-        let baseCaloriesPerMinute: Double
-        
-        switch workout.type {
-        case .strength:
-            baseCaloriesPerMinute = 4.0
-        case .cardio:
-            baseCaloriesPerMinute = 8.0
-        case .flexibility:
-            baseCaloriesPerMinute = 2.0
-        case .hiit:
-            baseCaloriesPerMinute = 10.0
-        }
-        
-        // Adjust for intensity
-        let intensityMultiplier: Double
-        switch workout.intensity {
-        case .low:
-            intensityMultiplier = 0.8
-        case .moderate:
-            intensityMultiplier = 1.0
-        case .high:
-            intensityMultiplier = 1.2
-        case .veryHigh:
-            intensityMultiplier = 1.4
-        }
-        
-        // Calculate total calories
-        let durationInMinutes = workout.duration / 60
-        let calories = baseCaloriesPerMinute * durationInMinutes * intensityMultiplier
-        
-        // Adjust for user's weight
-        let weightMultiplier = UserManager.shared.user.weight / 70.0 // Normalize to 70kg
-        let adjustedCalories = calories * weightMultiplier
-        
-        return Int(adjustedCalories)
-    }
-    
-    func generateWorkoutInsights(workouts: [Workout]) -> [WorkoutInsight] {
-        var insights: [WorkoutInsight] = []
-        
-        // Calculate weekly frequency
-        let weeklyFrequency = calculateWeeklyWorkoutFrequency(workouts: workouts)
-        
-        // Add frequency insight
-        if weeklyFrequency < 3 {
-            insights.append(WorkoutInsight(
-                title: "Increase Workout Frequency",
-                description: "Try to work out at least 3 times per week for optimal results.",
-                type: .suggestion
-            ))
-        } else if weeklyFrequency >= 5 {
-            insights.append(WorkoutInsight(
-                title: "Great Workout Frequency",
-                description: "You're maintaining a consistent workout schedule. Keep it up!",
-                type: .achievement
-            ))
-        }
-        
-        // Analyze workout types
-        let typeCounts = Dictionary(grouping: workouts, by: { $0.type })
-            .mapValues { $0.count }
-        
-        // Check for variety
-        if typeCounts.count < 3 {
-            insights.append(WorkoutInsight(
-                title: "Add Workout Variety",
-                description: "Try incorporating different types of workouts for better overall fitness.",
-                type: .suggestion
-            ))
-        }
-        
-        // Analyze intensity levels
-        let highIntensityWorkouts = workouts.filter { $0.intensity == .high || $0.intensity == .veryHigh }
-        let highIntensityPercentage = Double(highIntensityWorkouts.count) / Double(workouts.count)
-        
-        if highIntensityPercentage < 0.2 {
-            insights.append(WorkoutInsight(
-                title: "Increase Intensity",
-                description: "Try to include more high-intensity workouts in your routine.",
-                type: .suggestion
-            ))
-        }
-        
-        return insights
-    }
-}
-
-struct WorkoutInsight {
-    let title: String
-    let description: String
-    let type: InsightType
-}
-
-enum InsightType {
-    case suggestion
-    case achievement
-    case warning
-}
-
-enum WorkoutIntensity: String, CaseIterable {
-    case low = "Low"
-    case moderate = "Moderate"
-    case high = "High"
-    case veryHigh = "Very High"
 } 
