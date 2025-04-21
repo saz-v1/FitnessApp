@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 
+@MainActor
 class HealthKitService: ObservableObject {
     static let shared = HealthKitService()
     private let healthStore = HKHealthStore()
@@ -26,27 +27,18 @@ class HealthKitService: ObservableObject {
     func syncWithHealthKit() async {
         guard !isSyncing else { return }
         
-        await MainActor.run {
-            isSyncing = true
-            syncError = nil
-        }
+        isSyncing = true
+        syncError = nil
         
         do {
             try await requestAuthorization()
             try await fetchWeightHistory()
-            
-            await MainActor.run {
-                lastSyncDate = Date()
-            }
+            lastSyncDate = Date()
         } catch {
-            await MainActor.run {
-                syncError = error.localizedDescription
-            }
+            syncError = error.localizedDescription
         }
         
-        await MainActor.run {
-            isSyncing = false
-        }
+        isSyncing = false
     }
     
     private func fetchWeightHistory() async throws {
@@ -99,9 +91,22 @@ class HealthKitService: ObservableObject {
     }
 }
 
-enum HealthKitError: Error {
+enum HealthKitError: LocalizedError {
     case notAvailable
     case authorizationDenied
     case fetchFailed
     case saveFailed
+    
+    var errorDescription: String? {
+        switch self {
+        case .notAvailable:
+            return "HealthKit is not available on this device"
+        case .authorizationDenied:
+            return "HealthKit authorization was denied"
+        case .fetchFailed:
+            return "Failed to fetch data from HealthKit"
+        case .saveFailed:
+            return "Failed to save data to HealthKit"
+        }
+    }
 } 

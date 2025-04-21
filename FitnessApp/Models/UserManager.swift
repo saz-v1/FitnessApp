@@ -2,11 +2,15 @@ import Foundation
 import SwiftUI
 
 /// Manages user data and calculations throughout the app
+@MainActor
 class UserManager: ObservableObject {
     /// Published user object that will notify views of changes
     @Published var user: User
     
     static let shared = UserManager()
+    
+    // Maximum number of history records to keep in memory
+    private let maxHistoryRecords = 1000
     
     init() {
         // Attempt to load saved user data from UserDefaults
@@ -27,6 +31,9 @@ class UserManager: ObservableObject {
                 calorieHistory: []
             )
         }
+        
+        // Trim history arrays if they exceed the maximum
+        trimHistoryArrays()
     }
     
     /// Saves user data to UserDefaults
@@ -34,6 +41,54 @@ class UserManager: ObservableObject {
         if let encoded = try? JSONEncoder().encode(user) {
             UserDefaults.standard.set(encoded, forKey: "user")
         }
+    }
+    
+    /// Trims history arrays to prevent excessive memory usage
+    private func trimHistoryArrays() {
+        // Sort arrays by date (newest first)
+        let sortedWeightHistory = user.weightHistory.sorted(by: { $0.date > $1.date })
+        let sortedWorkoutHistory = user.workoutHistory.sorted(by: { $0.date > $1.date })
+        let sortedCalorieHistory = user.calorieHistory.sorted(by: { $0.date > $1.date })
+        
+        // Trim to maximum size
+        if sortedWeightHistory.count > maxHistoryRecords {
+            user.weightHistory = Array(sortedWeightHistory.prefix(maxHistoryRecords))
+        }
+        
+        if sortedWorkoutHistory.count > maxHistoryRecords {
+            user.workoutHistory = Array(sortedWorkoutHistory.prefix(maxHistoryRecords))
+        }
+        
+        if sortedCalorieHistory.count > maxHistoryRecords {
+            user.calorieHistory = Array(sortedCalorieHistory.prefix(maxHistoryRecords))
+        }
+    }
+    
+    /// Adds a new weight record and trims history if needed
+    func addWeightRecord(_ record: WeightRecord) {
+        user.weightHistory.append(record)
+        trimHistoryArrays()
+        saveUser()
+    }
+    
+    /// Adds a new workout record and trims history if needed
+    func addWorkoutRecord(_ record: WorkoutRecord) {
+        user.workoutHistory.append(record)
+        trimHistoryArrays()
+        saveUser()
+    }
+    
+    /// Adds a new calorie record and trims history if needed
+    func addCalorieRecord(_ record: CalorieRecord) {
+        user.calorieHistory.append(record)
+        trimHistoryArrays()
+        saveUser()
+    }
+    
+    /// Updates the user's current weight
+    func updateWeight(_ weight: Double) {
+        user.weight = weight
+        addWeightRecord(WeightRecord(weight: weight))
     }
     
     /// Calculates user's BMI based on current height and weight
@@ -49,20 +104,59 @@ class UserManager: ObservableObject {
         let weightInKg = user.usesMetric ? user.weight : user.weight * 0.453592
         let heightInCm = user.usesMetric ? user.height : user.height * 2.54
         
-        // Calculate base metabolic rate (BMR)
-        let bmr: Double
-        switch user.gender {
-        case .male:
-            bmr = 88.362 + (13.397 * weightInKg) + (4.799 * heightInCm) - (5.677 * 25)
-        case .female:
-            bmr = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * 25)
-        case .other:
-            // Use average of male and female calculations
-            bmr = (88.362 + 447.593) / 2 + (11.322 * weightInKg) + (3.9485 * heightInCm) - (5.0035 * 25)
+        // Calculate BMR using Harris-Benedict equation
+        var bmr: Double
+        if user.gender == .male {
+            bmr = 88.362 + (13.397 * weightInKg) + (4.799 * heightInCm) - (5.677 * Double(user.age))
+        } else {
+            bmr = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * Double(user.age))
         }
         
-        // Apply activity level multiplier to get total daily energy expenditure
+        // Apply activity multiplier
         return bmr * user.activityLevel.multiplier
+    }
+    
+    /// Calculates weekly calorie target based on goal weight
+    func calculateWeeklyCalorieTarget() -> Double? {
+        guard let goalWeight = user.goalWeight else { return nil }
+        
+        // Calculate daily maintenance calories
+        let maintenanceCalories = calculateDailyCalories()
+        
+        // Calculate daily deficit/surplus based on goal
+        let weightDifference = goalWeight - user.weight
+        let weeklyWeightChange = 0.5 // Target 0.5 kg/lbs per week
+        
+        // Calculate daily calorie adjustment
+        // 1 kg of fat = 7700 calories
+        let dailyAdjustment = (weeklyWeightChange * 7700) / 7
+        
+        // Apply adjustment based on whether goal is to lose or gain
+        if weightDifference < 0 {
+            // Goal is to lose weight
+            return maintenanceCalories - dailyAdjustment
+        } else if weightDifference > 0 {
+            // Goal is to gain weight
+            return maintenanceCalories + dailyAdjustment
+        } else {
+            // No change needed
+            return maintenanceCalories
+        }
+    }
+    
+    /// Gets the most recent weight record
+    func getMostRecentWeight() -> WeightRecord? {
+        return user.weightHistory.sorted(by: { $0.date > $1.date }).first
+    }
+    
+    /// Gets the most recent workout record
+    func getMostRecentWorkout() -> WorkoutRecord? {
+        return user.workoutHistory.sorted(by: { $0.date > $1.date }).first
+    }
+    
+    /// Gets the most recent calorie record
+    func getMostRecentCalorie() -> CalorieRecord? {
+        return user.calorieHistory.sorted(by: { $0.date > $1.date }).first
     }
     
     /// BMI category with associated health information
@@ -95,28 +189,6 @@ class UserManager: ObservableObject {
         case 25..<30: return .overweight
         default: return .obese
         }
-    }
-    
-    /// Calculate weekly calorie target based on weight goal
-    func calculateWeeklyCalorieTarget() -> Double? {
-        guard let goalWeight = user.goalWeight else { return nil }
-        
-        let weightDiff = goalWeight - user.weight
-        // 7700 calories roughly equals 1kg of body weight
-        let totalCalorieDiff = weightDiff * 7700
-        
-        // Aim to reach goal in 12 weeks (safe weight loss/gain rate)
-        let weeklyCalorieDiff = totalCalorieDiff / 12
-        
-        // Daily calorie adjustment
-        let dailyCalorieAdjustment = weeklyCalorieDiff / 7
-        
-        return calculateDailyCalories() + dailyCalorieAdjustment
-    }
-    
-    func updateWeight(_ weight: Double) {
-        user.weight = weight
-        saveUser()
     }
     
     func updateHeight(_ height: Double) {

@@ -1,46 +1,139 @@
 import Foundation
 
-/// Main user model containing all user-related data and preferences
-struct User: Codable, Equatable {
-    var height: Double          // User's height in cm or inches
-    var weight: Double          // User's weight in kg or pounds
-    var age: Int               // User's age
-    var gender: Gender          // User's selected gender
-    var usesMetric: Bool        // Whether to use metric or imperial units
-    var activityLevel: ActivityLevel  // User's activity level for calorie calculations
-    var goalWeight: Double?     // Target weight goal in kg or pounds
-    var weightHistory: [WeightRecord] // History of weight measurements
-    var workoutHistory: [WorkoutRecord] // History of workouts
-    var calorieHistory: [CalorieRecord] // History of calorie intake
+/// Represents a user in the fitness app with their profile information and preferences
+struct User: Codable, Identifiable {
+    /// Unique identifier for the user
+    let id: UUID
+    /// User's full name
+    let name: String
+    /// User's email address
+    let email: String
+    /// User's date of birth
+    let dateOfBirth: Date
+    /// User's gender
+    let gender: Gender
+    /// User's height in centimeters
+    let height: Double
+    /// User's current weight in kilograms
+    let weight: Double
+    /// User's target weight in kilograms
+    let targetWeight: Double
+    /// User's activity level
+    let activityLevel: ActivityLevel
+    /// User's fitness goals
+    let goals: [FitnessGoal]
+    /// User's preferred units of measurement
+    let preferredUnits: MeasurementUnits
+    /// Whether the user has enabled HealthKit integration
+    let healthKitEnabled: Bool
+    /// Date when the user's profile was last updated
+    let lastUpdated: Date
     
-    /// Gender options available to the user
-    enum Gender: String, Codable, CaseIterable, Identifiable, Equatable {
+    /// Gender options for user profiles
+    enum Gender: String, Codable, CaseIterable {
+        /// Male gender
         case male = "Male"
+        /// Female gender
         case female = "Female"
+        /// Other gender
         case other = "Other"
-        
-        var id: String { rawValue }
+        /// Prefer not to specify
+        case notSpecified = "Not Specified"
     }
     
-    /// Activity levels with corresponding calorie multipliers
-    enum ActivityLevel: String, Codable, CaseIterable, Identifiable, Equatable {
+    /// Activity level categories for calculating daily calorie needs
+    enum ActivityLevel: String, Codable, CaseIterable {
+        /// Sedentary lifestyle with little to no exercise
         case sedentary = "Sedentary"
+        /// Light activity with light exercise 1-3 days/week
         case lightlyActive = "Lightly Active"
+        /// Moderate activity with moderate exercise 3-5 days/week
         case moderatelyActive = "Moderately Active"
+        /// Very active with hard exercise 6-7 days/week
         case veryActive = "Very Active"
-        case extraActive = "Extra Active"
+        /// Extremely active with very hard exercise daily
+        case extremelyActive = "Extremely Active"
+    }
+    
+    /// Fitness goals that users can set
+    enum FitnessGoal: String, Codable, CaseIterable {
+        /// Goal to lose weight
+        case weightLoss = "Weight Loss"
+        /// Goal to maintain current weight
+        case maintenance = "Maintenance"
+        /// Goal to gain weight
+        case weightGain = "Weight Gain"
+        /// Goal to build muscle
+        case muscleGain = "Muscle Gain"
+        /// Goal to improve endurance
+        case endurance = "Endurance"
+        /// Goal to improve flexibility
+        case flexibility = "Flexibility"
+    }
+    
+    /// Units of measurement preferences
+    struct MeasurementUnits: Codable {
+        /// Weight unit preference (metric or imperial)
+        let weight: WeightUnit
+        /// Height unit preference (metric or imperial)
+        let height: HeightUnit
+        /// Distance unit preference (metric or imperial)
+        let distance: DistanceUnit
         
-        var id: String { rawValue }
-        
-        var multiplier: Double {
-            switch self {
-            case .sedentary: return 1.2
-            case .lightlyActive: return 1.375
-            case .moderatelyActive: return 1.55
-            case .veryActive: return 1.725
-            case .extraActive: return 1.9
-            }
+        /// Weight measurement units
+        enum WeightUnit: String, Codable {
+            /// Kilograms (metric)
+            case kilograms = "kg"
+            /// Pounds (imperial)
+            case pounds = "lbs"
         }
+        
+        /// Height measurement units
+        enum HeightUnit: String, Codable {
+            /// Centimeters (metric)
+            case centimeters = "cm"
+            /// Inches (imperial)
+            case inches = "in"
+        }
+        
+        /// Distance measurement units
+        enum DistanceUnit: String, Codable {
+            /// Kilometers (metric)
+            case kilometers = "km"
+            /// Miles (imperial)
+            case miles = "mi"
+        }
+    }
+    
+    /// Creates a new user with the specified parameters
+    /// - Parameters:
+    ///   - id: Unique identifier (defaults to a new UUID)
+    ///   - name: User's full name
+    ///   - email: User's email address
+    ///   - dateOfBirth: User's date of birth
+    ///   - gender: User's gender
+    ///   - height: User's height in centimeters
+    ///   - weight: User's current weight in kilograms
+    ///   - targetWeight: User's target weight in kilograms
+    ///   - activityLevel: User's activity level
+    ///   - goals: User's fitness goals
+    ///   - preferredUnits: User's preferred units of measurement
+    ///   - healthKitEnabled: Whether HealthKit is enabled
+    ///   - lastUpdated: Last update timestamp (defaults to current date)
+    init(id: UUID = UUID(), name: String, email: String, dateOfBirth: Date, gender: Gender, height: Double, weight: Double, targetWeight: Double, activityLevel: ActivityLevel, goals: [FitnessGoal], preferredUnits: MeasurementUnits, healthKitEnabled: Bool = false, lastUpdated: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.email = email
+        self.dateOfBirth = dateOfBirth
+        self.gender = gender
+        self.height = height
+        self.weight = weight
+        self.targetWeight = targetWeight
+        self.activityLevel = activityLevel
+        self.goals = goals
+        self.preferredUnits = preferredUnits
+        self.healthKitEnabled = healthKitEnabled
+        self.lastUpdated = lastUpdated
     }
 }
 

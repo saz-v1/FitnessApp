@@ -1,6 +1,7 @@
 import Foundation
 
 /// Service class to handle workout suggestions and planning
+@MainActor
 class WorkoutSuggestionService: ObservableObject {
     // Singleton instance for app-wide access
     static let shared = WorkoutSuggestionService()

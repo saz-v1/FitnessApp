@@ -12,16 +12,23 @@ class ClaudeService: ObservableObject {
     
     // Private initializer to enforce singleton pattern
     private init() {
-        // Set API key directly - in production, use secure storage instead
-        self.apiKey = "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"
-        print("API Key loaded successfully")
+        // Load API key from environment or configuration
+        // In a production app, use a secure keychain or environment variable
+        if let key = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"] {
+            self.apiKey = key
+        } else {
+            // Fallback to a placeholder for development
+            // In production, this should throw an error instead
+            self.apiKey = "YOUR_API_KEY_HERE"
+            print("Warning: Claude API key not found in environment. Using placeholder.")
+        }
     }
     
     // Main function to estimate calories from food description
     func estimateCalories(foodDescription: String) async throws -> Int {
         // Validate API key
-        guard !apiKey.isEmpty else {
-            print("Error: API key is empty")
+        guard !apiKey.isEmpty && apiKey != "YOUR_API_KEY_HERE" else {
+            print("Error: API key is missing or invalid")
             throw ClaudeError.missingAPIKey
         }
         
