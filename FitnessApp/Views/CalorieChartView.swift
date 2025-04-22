@@ -19,23 +19,16 @@ struct CalorieChartView: View {
     
     // MARK: - Initialization
     
-    init(showAnnotations: Bool = false) {
+    init(showAnnotations: Bool = true) {
         self.showAnnotations = showAnnotations
     }
     
     // MARK: - Computed Properties
     
-    /// Calculates the Y-axis range for the chart based on calorie data
+    /// Fixed Y-axis range for the chart from 0 to maintenance calories + 500
     private var calorieRange: ClosedRange<Double> {
-        let calories = userManager.user.calorieHistory.map { $0.calories }
-            .filter { !$0.isNaN && $0.isFinite }
-        
-        if calories.isEmpty {
-            return 0...3000 // Default range if no data
-        }
-        
-        let maxCalories = (calories.max() ?? 3000) + 500
-        return 0...maxCalories
+        let maintenance = userManager.calculateDailyCalories()
+        return 0...(maintenance + 500)
     }
     
     /// Groups calorie records by day for the bar chart
@@ -81,7 +74,7 @@ struct CalorieChartView: View {
                         )
                         .foregroundStyle(
                             .linearGradient(
-                                colors: [.orange.opacity(0.7), .orange.opacity(0.3)],
+                                colors: [.green.opacity(0.7), .orange.opacity(0.3)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )

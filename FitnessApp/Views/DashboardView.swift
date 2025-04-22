@@ -54,7 +54,7 @@ struct DashboardView: View {
                     
                     // Calorie Chart
                     Button(action: { showingCalorieDetail = true }) {
-                        CalorieChartView(showAnnotations: false)
+                        CalorieChartView()
                             .frame(height: 200)
                             .padding()
                             .background(Color(.systemGray6))
