@@ -16,7 +16,7 @@ struct TrainerChatView: View {
     @State private var showingClearConfirmation = false
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             // Chat messages section with auto-scroll
             ScrollViewReader { proxy in
                 ScrollView {
@@ -25,7 +25,8 @@ struct TrainerChatView: View {
                             MessageBubble(message: message)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                 }
                 // Auto-scroll to the latest message when messages change
                 .onChange(of: chatManager.messages) { oldValue, newValue in
@@ -40,23 +41,29 @@ struct TrainerChatView: View {
             // Message input section
             VStack(spacing: 0) {
                 Divider()
-                HStack {
-                    // Text input field
-                    TextField("Ask your trainer...", text: $messageText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                HStack(alignment: .bottom, spacing: 10) {
+                    // Text input field with dynamic height
+                    TextField("Ask your trainer...", text: $messageText, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .padding(10)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(20)
                         .focused($isFocused)
+                        .lineLimit(1...5)
                     
                     // Send button
                     Button {
                         sendMessage()
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 24))
+                            .font(.system(size: 32))
                             .foregroundColor(.green)
                     }
                     .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
             }
         }
         .navigationTitle("AI Trainer")
@@ -110,10 +117,11 @@ struct MessageBubble: View {
             
             // Message content with appropriate styling
             Text(message.content)
-                .padding()
-                .background(message.isUser ? Color.green.opacity(0.2) : Color.gray.opacity(0.2))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(message.isUser ? Color.green.opacity(0.2) : Color(.systemGray6))
                 .foregroundColor(.primary)
-                .cornerRadius(16)
+                .cornerRadius(20)
             
             // Align AI messages to the left
             if !message.isUser {
