@@ -122,7 +122,7 @@ struct MessageBubble: View {
             Text(message.content)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(message.isUser ? Color.green.opacity(0.2) : Color(.systemGray6))
+                .background(message.isUser ? Color.green.opacity(0.4) : Color(.systemGray6))
                 .foregroundColor(.primary)
                 .cornerRadius(20)
             
