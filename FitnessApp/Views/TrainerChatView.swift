@@ -37,6 +37,9 @@ struct TrainerChatView: View {
                     }
                 }
             }
+            .onTapGesture {
+                isFocused = false
+            }
             
             // Message input section
             VStack(spacing: 0) {
