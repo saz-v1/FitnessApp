@@ -12,6 +12,9 @@ struct TrainerChatView: View {
     /// Focus state for managing keyboard focus
     @FocusState private var isFocused: Bool
     
+    /// State variable for showing clear confirmation alert
+    @State private var showingClearConfirmation = false
+    
     var body: some View {
         VStack {
             // Chat messages section with auto-scroll
@@ -61,11 +64,19 @@ struct TrainerChatView: View {
             // Clear chat button in the navigation bar
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    chatManager.clearChat()
+                    showingClearConfirmation = true
                 } label: {
                     Image(systemName: "trash")
                 }
             }
+        }
+        .alert("Clear Chat", isPresented: $showingClearConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive) {
+                chatManager.clearChat()
+            }
+        } message: {
+            Text("Are you sure you want to clear all messages? This action cannot be undone.")
         }
     }
     
