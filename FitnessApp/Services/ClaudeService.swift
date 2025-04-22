@@ -35,7 +35,7 @@ class ClaudeService: ObservableObject {
         
         // Prepare the request body with model and message
         let requestBody: [String: Any] = [
-            "model": "claude-3-opus-20240229", // Using Claude 3 Opus model
+            "model": "claude-3-haiku-20240307", // Using Claude 3 haiku model as it is the cheapest and fastest model
             "max_tokens": 10, // Limit response length
             "messages": [
                 [
@@ -111,7 +111,7 @@ class ClaudeService: ObservableObject {
         
         // Prepare the request body
         let requestBody: [String: Any] = [
-            "model": "claude-3-opus-20240229",
+            "model": "claude-3-haiku-20240307", // Using the cheapest and fastest model for near instant responses
             "max_tokens": 1000,
             "messages": [
                 [
