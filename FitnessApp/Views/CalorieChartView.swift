@@ -143,11 +143,6 @@ struct CalorieChartView: View {
                             .font(.caption)
                     }
                 }
-                .chartXAxisLabel(position: .bottom, alignment: .center) {
-                    Text("Date")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
                 .chartXAxisLabel(position: .bottomTrailing) {
                     Text("")
                         .font(.caption)
