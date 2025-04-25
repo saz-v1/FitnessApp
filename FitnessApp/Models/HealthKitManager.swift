@@ -9,6 +9,7 @@ class HealthKitManager: ObservableObject {
     @Published var heartRate: Double = 0
     @Published var heartRateTimestamp: Date?
     @Published var sleepHours: Double = 0
+    @Published var workouts: [HKWorkout] = []
     
     static let shared = HealthKitManager()
     
@@ -75,10 +76,14 @@ class HealthKitManager: ObservableObject {
     }
     
     func syncWorkouts() async {
+        await fetchWorkoutHistory(monthsToFetch: 1)
+    }
+    
+    func fetchWorkoutHistory(monthsToFetch: Int = 3) async {
         let workoutType = HKObjectType.workoutType()
         let calendar = Calendar.current
         let now = Date()
-        let startDate = calendar.date(byAdding: .month, value: -1, to: now)!
+        let startDate = calendar.date(byAdding: .month, value: -monthsToFetch, to: now)!
         
         let predicate = HKQuery.predicateForSamples(
             withStart: startDate,
@@ -92,10 +97,12 @@ class HealthKitManager: ObservableObject {
             predicate: predicate,
             limit: HKObjectQueryNoLimit,
             sortDescriptors: [sortDescriptor]
-        ) { _, samples, error in
+        ) { [weak self] _, samples, error in
             guard let workouts = samples as? [HKWorkout] else { return }
             
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
+                self?.workouts = workouts
+                
                 // Create a set of existing workout dates to check for duplicates
                 let existingWorkoutDates = Set(UserManager.shared.user.workoutHistory.map { 
                     calendar.startOfDay(for: $0.date)
@@ -111,7 +118,7 @@ class HealthKitManager: ObservableObject {
                     WorkoutRecord(
                         id: UUID(),
                         date: workout.startDate,
-                        type: self.mapWorkoutType(workout.workoutActivityType),
+                        type: self?.mapWorkoutType(workout.workoutActivityType) ?? .other,
                         duration: workout.duration,
                         notes: nil
                     )
@@ -134,6 +141,7 @@ class HealthKitManager: ObservableObject {
                 group.addTask { await self.fetchActiveEnergy() }
                 group.addTask { await self.fetchHeartRate() }
                 group.addTask { await self.fetchSleepHours() }
+                group.addTask { await self.fetchWorkoutHistory() }
             }
         } catch {
             print("Error fetching health data: \(error)")
@@ -284,12 +292,14 @@ class HealthKitManager: ObservableObject {
     @MainActor
     private func mapWorkoutType(_ hkType: HKWorkoutActivityType) -> WorkoutRecord.WorkoutType {
         switch hkType {
-        case .running, .walking:
+        case .running, .walking, .cycling, .swimming, .hiking:
             return .cardio
-        case .traditionalStrengthTraining:
+        case .functionalStrengthTraining, .traditionalStrengthTraining:
             return .strength
-        case .flexibility, .yoga:
+        case .yoga, .flexibility:
             return .flexibility
+        case .highIntensityIntervalTraining:
+            return .hiit
         default:
             return .other
         }

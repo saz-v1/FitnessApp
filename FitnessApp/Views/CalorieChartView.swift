@@ -34,14 +34,30 @@ struct CalorieChartView: View {
     /// Groups calorie records by day for the bar chart
     private var dailyCalories: [(date: Date, calories: Double)] {
         let calendar = Calendar.current
-        let groupedByDay = Dictionary(grouping: userManager.user.calorieHistory) { record in
-            calendar.startOfDay(for: record.date)
+        let now = Date()
+        let startDate = calendar.date(byAdding: .day, value: -30, to: now)! // Show last 30 days
+        
+        // Create a dictionary of all days in the range
+        var allDays: [Date: Double] = [:]
+        var currentDate = startDate
+        
+        // Initialize all days with zero calories
+        while currentDate <= now {
+            allDays[calendar.startOfDay(for: currentDate)] = 0
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
         }
         
-        return groupedByDay.map { (date, records) in
-            let totalCalories = records.reduce(0) { $0 + $1.calories }
-            return (date: date, calories: totalCalories)
-        }.sorted { $0.date < $1.date }
+        // Add actual calorie records
+        for record in userManager.user.calorieHistory {
+            let day = calendar.startOfDay(for: record.date)
+            if day >= startDate && day <= now {
+                allDays[day, default: 0] += record.calories
+            }
+        }
+        
+        // Convert to array and sort by date
+        return allDays.map { (date: $0.key, calories: $0.value) }
+            .sorted { $0.date < $1.date }
     }
     
     // MARK: - Body
@@ -121,11 +137,21 @@ struct CalorieChartView: View {
                 
                 // X-axis configuration
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 12)) { value in
+                    AxisMarks(values: .stride(by: .day, count: 2)) { value in
                         AxisGridLine()
                         AxisValueLabel(format: .dateTime.month().day())
                             .font(.caption)
                     }
+                }
+                .chartXAxisLabel(position: .bottom, alignment: .center) {
+                    Text("Date")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .chartXAxisLabel(position: .bottomTrailing) {
+                    Text("")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
                 // Y-axis configuration
@@ -157,19 +183,10 @@ struct CalorieChartView: View {
     
     /// Calculates the date range for the X-axis with appropriate padding
     private func getDateRange() -> ClosedRange<Date> {
-        let sortedRecords = userManager.user.calorieHistory.sorted(by: { $0.date < $1.date })
-        
-        // If no records, show last month
-        guard let firstDate = sortedRecords.first?.date,
-              let lastDate = sortedRecords.last?.date else {
-            return Calendar.current.date(byAdding: .month, value: -1, to: Date())!...Date()
-        }
-        
-        // Add 7 days padding on the start, but don't go beyond current date
-        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: firstDate)!
-        let endDate = min(Calendar.current.date(byAdding: .day, value: 7, to: lastDate)!, Date())
-        
-        return startDate...endDate
+        let calendar = Calendar.current
+        let now = Date()
+        let startDate = calendar.date(byAdding: .day, value: -30, to: now)!
+        return startDate...now
     }
 }
 
