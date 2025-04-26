@@ -207,7 +207,7 @@ struct CalorieChartView: View {
             }
         }
         .sheet(isPresented: $isAddingCalories) {
-            AddCaloriesSheet()
+            AddCalorieSheet()
         }
     }
     

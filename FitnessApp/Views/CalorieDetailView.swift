@@ -5,6 +5,7 @@ struct CalorieDetailView: View {
     @EnvironmentObject var userManager: UserManager
     @Environment(\.dismiss) var dismiss
     @State private var isAddingCalories = false
+    @StateObject private var claudeService = ClaudeService.shared
     
     var todaysMeals: [CalorieRecord] {
         userManager.user.calorieHistory
@@ -81,29 +82,28 @@ struct CalorieDetailView: View {
                 }
                 
                 // Today's Meals
-                if !todaysMeals.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Today's Meals")
-                            .font(.headline)
-                        
-                        let totalCalories = todaysMeals.reduce(0) { $0 + $1.calories }
-                        Text("Total: \(Int(totalCalories)) kcal")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Today's Meals")
+                        .font(.headline)
+                        .padding(.horizontal, 16)
+                    
+                    if todaysMeals.isEmpty {
+                        Text("No meals logged today")
                             .foregroundColor(.secondary)
-                        
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                    } else {
                         ForEach(todaysMeals) { meal in
                             MealRow(meal: meal)
                         }
                     }
-                    .padding(16)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
                 }
             }
-            .padding()
+            .padding(.vertical)
         }
-        .navigationTitle("Calorie Details")
+        .navigationTitle("Calories")
         .sheet(isPresented: $isAddingCalories) {
-            AddCaloriesSheet()
+            AddCalorieSheet()
         }
     }
 }
@@ -112,34 +112,34 @@ struct MealRow: View {
     let meal: CalorieRecord
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(meal.mealType.rawValue.capitalized)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(meal.mealType.rawValue)
                     .font(.headline)
-                if let description = meal.description {
-                    Text(description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing) {
-                Text("\(Int(meal.calories)) kcal")
-                    .bold()
+                Spacer()
                 Text(meal.date.formatted(date: .omitted, time: .shortened))
-                    .font(.caption)
                     .foregroundColor(.secondary)
             }
+            
+            if let description = meal.description {
+                Text(description)
+                    .foregroundColor(.secondary)
+            }
+            
+            HStack {
+                Text("\(Int(meal.calories)) kcal")
+                    .font(.title3)
+                    .bold()
+            }
         }
-        .padding()
+        .padding(16)
         .background(Color(.systemGray6))
-        .cornerRadius(10)
+        .cornerRadius(12)
+        .padding(.horizontal)
     }
 }
 
-struct AddCaloriesSheet: View {
+struct AddCalorieSheet: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var userManager: UserManager
     @StateObject private var claudeService = ClaudeService.shared
@@ -150,6 +150,7 @@ struct AddCaloriesSheet: View {
     @State private var date = Date()
     @State private var isEstimating: Bool = false
     @State private var errorMessage: String?
+    @State private var estimatedCalories: Double?
     
     var body: some View {
         NavigationView {
@@ -169,15 +170,10 @@ struct AddCaloriesSheet: View {
                     HStack {
                         Text("Calories")
                         Spacer()
-                        if isEstimating {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle())
-                        } else {
-                            TextField("Amount", value: $calories, format: .number)
-                                .multilineTextAlignment(.trailing)
-                                .keyboardType(.decimalPad)
-                            Text("kcal")
-                        }
+                        TextField("Amount", value: $calories, format: .number)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.decimalPad)
+                        Text("kcal")
                     }
                     
                     if !description.isEmpty {
@@ -222,27 +218,26 @@ struct AddCaloriesSheet: View {
                         userManager.saveUser()
                         dismiss()
                     }
-                    .disabled(calories <= 0)
                 }
             }
         }
     }
     
     private func estimateCalories() async {
-        guard !description.isEmpty else { return }
-        
         isEstimating = true
         errorMessage = nil
         
         do {
-            let estimatedCalories = try await claudeService.estimateCalories(foodDescription: description)
-            if estimatedCalories >= 0 {
-                calories = Double(estimatedCalories)
+            let estimate = try await claudeService.estimateFoodCalories(foodDescription: description)
+            // The response should now be just a number
+            if let calorieNumber = Double(estimate.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                estimatedCalories = calorieNumber
+                calories = calorieNumber
             } else {
-                errorMessage = "Could not estimate calories. Please enter them manually."
+                errorMessage = "Could not parse calorie estimate"
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "Failed to get calorie estimate: \(error.localizedDescription)"
         }
         
         isEstimating = false

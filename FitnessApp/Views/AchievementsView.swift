@@ -1,72 +1,5 @@
 import SwiftUI
 
-// MARK: - Achievement Summary Card
-struct AchievementSummaryCard: View {
-    @EnvironmentObject var userManager: UserManager
-    @StateObject private var achievementManager: AchievementManager
-    
-    init(userManager: UserManager) {
-        _achievementManager = StateObject(wrappedValue: AchievementManager(userManager: userManager))
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Achievements")
-                    .font(.headline)
-                
-                Spacer()
-                
-                NavigationLink {
-                    AchievementsView(userManager: userManager)
-                } label: {
-                    Text("See All")
-                        .font(.subheadline)
-                        .foregroundColor(.green)
-                }
-            }
-            
-            if achievementManager.achievements.filter({ $0.isUnlocked }).isEmpty {
-                Text("No achievements unlocked yet")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(achievementManager.achievements.filter { $0.isUnlocked }) { achievement in
-                            VStack(spacing: 8) {
-                                Image(systemName: achievement.icon)
-                                    .font(.title2)
-                                    .foregroundColor(.green)
-                                
-                                Text(achievement.title)
-                                    .font(.subheadline)
-                                    .bold()
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.8)
-                            }
-                            .frame(width: 100)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .onAppear {
-            achievementManager.checkAchievements()
-        }
-    }
-}
-
 // MARK: - Full Achievements View
 struct AchievementsView: View {
     @EnvironmentObject var userManager: UserManager
@@ -158,8 +91,8 @@ struct AchievementsView: View {
     }
 }
 
-// MARK: - Achievement Card (used in full view)
-private struct AchievementCard: View {
+// MARK: - Achievement Card
+struct AchievementCard: View {
     let achievement: Achievement
     
     var body: some View {
@@ -214,8 +147,8 @@ private struct AchievementCard: View {
     }
 }
 
-// MARK: - Category Extension (used in full view)
-private extension Achievement.Category {
+// MARK: - Category Extension
+extension Achievement.Category: CaseIterable {
     static var allCases: [Achievement.Category] = [.weight, .calories, .consistency, .milestones]
 }
 

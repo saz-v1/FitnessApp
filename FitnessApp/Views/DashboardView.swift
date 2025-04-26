@@ -118,13 +118,7 @@ struct DashboardView: View {
                                 }
                                 
                                 if let goalWeight = userManager.user.goalWeight {
-                                    let difference = goalWeight - userManager.user.weight
-                                    Text(difference > 0 ? "Need to gain" : "Need to lose")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    + Text(" \(String(format: "%.1f", abs(difference))) \(userManager.user.usesMetric ? "kg" : "lbs")")
-                                        .font(.caption)
-                                        .bold()
+                                    WeightGoalView(currentWeight: userManager.user.weight, goalWeight: goalWeight, usesMetric: userManager.user.usesMetric)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,10 +190,6 @@ struct DashboardView: View {
                     
                     // Achievements Summary
                     AchievementSummaryCard(userManager: userManager)
-                        .padding(.horizontal)
-                    
-                    // Recent Workouts
-                    RecentWorkoutsView()
                         .padding(.horizontal)
                 }
                 .padding(.vertical)
@@ -304,6 +294,74 @@ struct HealthDataSummaryCard: View {
         .padding(.horizontal)
         .task {
             await healthKitManager.fetchTodaysHealthData()
+        }
+    }
+}
+
+struct WeightGoalView: View {
+    let currentWeight: Double
+    let goalWeight: Double
+    let usesMetric: Bool
+    
+    var body: some View {
+        let difference = goalWeight - currentWeight
+        VStack(alignment: .leading, spacing: 4) {
+            Text(difference > 0 ? "Need to gain" : "Need to lose")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("\(String(format: "%.1f", abs(difference))) \(usesMetric ? "kg" : "lbs")")
+                .font(.caption)
+                .bold()
+        }
+    }
+}
+
+struct AchievementSummaryCard: View {
+    let userManager: UserManager
+    @StateObject private var achievementManager: AchievementManager
+    
+    init(userManager: UserManager) {
+        self.userManager = userManager
+        _achievementManager = StateObject(wrappedValue: AchievementManager(userManager: userManager))
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Achievements")
+                    .font(.headline)
+                
+                Spacer()
+                
+                NavigationLink(destination: AchievementsView(userManager: userManager)) {
+                    Text("View All")
+                        .font(.subheadline)
+                        .foregroundColor(.green)
+                }
+            }
+            
+            let unlockedAchievements = achievementManager.achievements.filter { $0.isUnlocked }
+            
+            if unlockedAchievements.isEmpty {
+                Text("No achievements unlocked yet. Keep going!")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(unlockedAchievements.prefix(3)) { achievement in
+                            AchievementCard(achievement: achievement)
+                                .frame(width: 120)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .onAppear {
+            achievementManager.checkAchievements()
         }
     }
 } 

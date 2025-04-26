@@ -1,23 +1,81 @@
 import Foundation
+import Security
 import SwiftUI
 
-// Service class to handle communication with Claude API
+/// Service for interacting with Claude AI for fitness-related features
 class ClaudeService: ObservableObject {
-    // Singleton instance for app-wide access
+    /// Singleton instance for app-wide access
     static let shared = ClaudeService()
     
-    // API configuration
+    /// API key for Claude service
     private let apiKey: String
+    
+    /// Base URL for Claude API
     private let baseURL = "https://api.anthropic.com/v1/messages"
     
-    // Private initializer to enforce singleton pattern
+    /// Keychain service name for API key storage
+    private let keychainService = "com.yourdomain.FitnessApp"
+    
+    /// Keychain account for API key
+    private let keychainAccount = "ClaudeAPIKey"
+    
+    /// Private initializer to enforce singleton pattern
     private init() {
         // Set API key directly - in production, use secure storage instead
-        self.apiKey = "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"
+        self.apiKey = "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"
         print("API Key loaded successfully")
     }
     
-    // Main function to estimate calories from food description
+    /// Saves API key to keychain
+    /// - Parameters:
+    ///   - key: The API key to save
+    ///   - service: The keychain service name
+    ///   - account: The keychain account
+    private static func saveAPIKeyToKeychain(_ key: String, service: String, account: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: key.data(using: .utf8)!
+        ]
+        
+        // First try to delete any existing key
+        SecItemDelete(query as CFDictionary)
+        
+        // Then add the new key
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            print("Error saving API key to keychain: \(status)")
+            return
+        }
+    }
+    
+    /// Retrieves API key from keychain
+    /// - Parameters:
+    ///   - service: The keychain service name
+    ///   - account: The keychain account
+    /// - Returns: The API key if found, nil otherwise
+    private static func getAPIKeyFromKeychain(service: String, account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true
+        ]
+        
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        
+        return key
+    }
+    
+    /// Main function to estimate calories from food description
     func estimateCalories(foodDescription: String) async throws -> Int {
         // Validate API key
         guard !apiKey.isEmpty else {
@@ -25,34 +83,35 @@ class ClaudeService: ObservableObject {
             throw ClaudeError.missingAPIKey
         }
         
-        // Construct the prompt for Claude
-        let prompt = """
-        Based on the following food description, estimate the approximate number of calories. 
-        Return only the number, no explanation needed. If you can't make a reasonable estimate, return -1.
-        
-        Food description: \(foodDescription)
-        """
-        
         // Prepare the request body with model and message
         let requestBody: [String: Any] = [
-            "model": "claude-3-haiku-20240307", // Using Claude 3 haiku model as it is the cheapest and fastest model
-            "max_tokens": 10, // Limit response length
+            "model": "claude-3-haiku-20240307",
+            "max_tokens": 10,
             "messages": [
                 [
+                    "role": "system",
+                    "content": "You are a calorie calculator. You must ONLY return a single number. No text, no explanations, no formatting. Just the number. If you cannot estimate, return -1."
+                ],
+                [
                     "role": "user",
-                    "content": prompt
+                    "content": "\(foodDescription)"
                 ]
             ]
         ]
         
         // Create and configure the HTTP request
-        var request = URLRequest(url: URL(string: baseURL)!)
+        guard let url = URL(string: baseURL) else {
+            throw ClaudeError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         
-        print("Making API request to Claude...")
+        print("Making API request to Claude for calorie estimation...")
+        print("Food description: \(foodDescription)")
         
         do {
             // Serialize request body to JSON
@@ -67,10 +126,10 @@ class ClaudeService: ObservableObject {
                 print("HTTP Status Code: \(httpResponse.statusCode)")
                 
                 // Print raw response for debugging
-                let responseString = String(data: data, encoding: .utf8) ?? "Unable to convert data to string"
-                print("Raw response: \(responseString)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("Raw calorie estimation response: \(responseString)")
+                }
                 
-                // Check for HTTP errors
                 if httpResponse.statusCode != 200 {
                     if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                         print("Error response: \(errorJson)")
@@ -83,19 +142,44 @@ class ClaudeService: ObservableObject {
             let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
             print("Received response from Claude")
             
+            // Print all content blocks for debugging
+            print("Number of content blocks: \(claudeResponse.content.count)")
+            for (index, block) in claudeResponse.content.enumerated() {
+                print("Content block \(index):")
+                print("  Type: \(block.type)")
+                print("  Text: \(block.text ?? "nil")")
+            }
+            
             // Extract calories from the response
             if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
-               let text = textBlock.text,
-               let calories = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                print("Estimated calories: \(calories)")
-                return calories
+               let text = textBlock.text {
+                // Clean up the text and try to extract the number
+                let cleanedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                print("Cleaned response text: '\(cleanedText)'")
+                
+                // Try to extract just the number
+                if let calories = Int(cleanedText) {
+                    print("Successfully parsed calories: \(calories)")
+                    return calories
+                } else {
+                    // Try to extract number from text that might contain other characters
+                    let numbers = cleanedText.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                        .filter { !$0.isEmpty }
+                        .compactMap { Int($0) }
+                    
+                    print("Found numbers in text: \(numbers)")
+                    
+                    if let firstNumber = numbers.first {
+                        print("Extracted calories from text: \(firstNumber)")
+                        return firstNumber
+                    }
+                }
             }
             
             print("Could not parse calories from response")
             return -1
             
         } catch {
-            // Handle any errors during the request
             print("Error making API request: \(error)")
             throw ClaudeError.networkError(error)
         }
@@ -111,7 +195,7 @@ class ClaudeService: ObservableObject {
         
         // Prepare the request body
         let requestBody: [String: Any] = [
-            "model": "claude-3-haiku-20240307", // Using the cheapest and fastest model for near instant responses
+            "model": "claude-3-haiku-20240307",
             "max_tokens": 1000,
             "messages": [
                 [
@@ -122,7 +206,11 @@ class ClaudeService: ObservableObject {
         ]
         
         // Create and configure the HTTP request
-        var request = URLRequest(url: URL(string: baseURL)!)
+        guard let url = URL(string: baseURL) else {
+            throw ClaudeError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
@@ -148,35 +236,107 @@ class ClaudeService: ObservableObject {
                 }
             }
             
-            // Decode the response
-            let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
-            
-            // Extract text from the response
-            if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
-               let text = textBlock.text {
-                return text
+            // Print raw response for debugging
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Raw API Response: \(responseString)")
             }
             
-            throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "No text content found in response")))
+            // Decode the response
+            do {
+                let claudeResponse = try JSONDecoder().decode(ClaudeResponse.self, from: data)
+                
+                // Extract text from the response
+                if let textBlock = claudeResponse.content.first(where: { $0.type == "text" }),
+                   let text = textBlock.text {
+                    return text
+                }
+                
+                throw ClaudeError.decodingError(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "No text content found in response")))
+            } catch {
+                print("Decoding error: \(error)")
+                throw ClaudeError.decodingError(error as! DecodingError)
+            }
             
+        } catch let error as ClaudeError {
+            throw error
         } catch {
-            print("Error making API request: \(error)")
+            print("Network error: \(error)")
             throw ClaudeError.networkError(error)
         }
+    }
+    
+    /// Generates a targeted workout plan based on user profile and focus area
+    /// - Parameters:
+    ///   - user: The user's profile data
+    ///   - focusArea: The specific area to focus on (e.g., "Chest", "Legs")
+    /// - Returns: A detailed workout plan
+    func generateTargetedWorkout(user: User, focusArea: String) async throws -> String {
+        let prompt = """
+        Create a detailed workout plan for a \(user.age)-year-old \(user.gender.rawValue.lowercased()) focusing on \(focusArea).
+        Current weight: \(user.weight) \(user.usesMetric ? "kg" : "lbs")
+        Activity level: \(user.activityLevel.rawValue)
+        
+        Include:
+        1. Warm-up exercises
+        2. Main exercises with sets, reps, and rest periods
+        3. Cool-down exercises
+        4. Tips for proper form
+        5. Expected duration
+        6. Equipment needed
+        
+        Format the response in a clear, easy-to-read structure.
+        """
+        
+        return try await makeRequest(prompt: prompt)
+    }
+    
+    /// Generates workout analytics and insights
+    /// - Parameter workouts: Array of workout records to analyze
+    /// - Returns: Analysis and insights about the workouts
+    func generateWorkoutAnalytics(workouts: [WorkoutRecord]) async throws -> String {
+        let prompt = """
+        Analyze these workout records and provide insights:
+        \(workouts.map { "- \($0.type.rawValue) workout on \($0.date.formatted()): \(Int($0.duration/60)) minutes, \($0.intensity.rawValue) intensity" }.joined(separator: "\n"))
+        
+        Include:
+        1. Workout frequency analysis
+        2. Intensity distribution
+        3. Most common workout types
+        4. Progress over time
+        5. Recommendations for improvement
+        
+        Format the response in a clear, easy-to-read structure.
+        """
+        
+        return try await makeRequest(prompt: prompt)
+    }
+    
+    /// Estimates calories for a food item
+    /// - Parameter foodDescription: Description of the food item
+    /// - Returns: Estimated calorie content
+    func estimateFoodCalories(foodDescription: String) async throws -> String {
+        let prompt = """
+        Estimate the calorie content for this food item:
+        \(foodDescription)
+        
+        Return ONLY the number of calories, no additional information.
+        """
+        
+        return try await makeRequest(prompt: prompt)
     }
 }
 
 // MARK: - Response Models
 
-// Structure to decode Claude's API response
+/// Response model for Claude API
 struct ClaudeResponse: Codable {
-    let id: String              // Unique message ID
-    let type: String            // Message type
-    let role: String            // Role of the message sender
-    let content: [ContentBlock] // Array of content blocks
-    let model: String           // Model used for the response
-    let stopReason: String?     // Reason why the response stopped
-    let usage: Usage            // Token usage information
+    let id: String
+    let type: String
+    let role: String
+    let content: [ContentBlock]
+    let model: String
+    let stopReason: String?
+    let usage: Usage
     
     enum CodingKeys: String, CodingKey {
         case id, type, role, content, model
@@ -185,16 +345,16 @@ struct ClaudeResponse: Codable {
     }
 }
 
-// Structure for content blocks in Claude's response
+/// Content block in Claude's response
 struct ContentBlock: Codable {
-    let type: String  // Type of content (e.g., "text")
-    let text: String? // The actual content text
+    let type: String
+    let text: String?
 }
 
-// Structure for token usage information
+/// Usage information for the API call
 struct Usage: Codable {
-    let inputTokens: Int   // Number of input tokens used
-    let outputTokens: Int  // Number of output tokens used
+    let inputTokens: Int
+    let outputTokens: Int
     
     enum CodingKeys: String, CodingKey {
         case inputTokens = "input_tokens"
@@ -204,17 +364,20 @@ struct Usage: Codable {
 
 // MARK: - Error Handling
 
-// Custom error types for Claude service
+/// Custom error types for Claude service
 enum ClaudeError: LocalizedError {
-    case missingAPIKey           // API key is not configured
-    case apiError(statusCode: Int) // API returned an error status
-    case networkError(Error)     // Network-related errors
-    case decodingError(DecodingError) // JSON decoding errors
+    case missingAPIKey
+    case invalidURL
+    case apiError(statusCode: Int)
+    case networkError(Error)
+    case decodingError(DecodingError)
     
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
             return "API key is missing. Please check your configuration."
+        case .invalidURL:
+            return "Invalid API URL."
         case .apiError(let statusCode):
             return "API error with status code: \(statusCode)"
         case .networkError(let error):

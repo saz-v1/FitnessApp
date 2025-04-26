@@ -22,14 +22,6 @@ struct ContentView: View {
                     Label("Workouts", systemImage: "figure.run")
                 }
             
-            // AI Trainer chat tab
-            NavigationView {
-                TrainerChatView()
-            }
-            .tabItem {
-                Label("Trainer", systemImage: "message.fill")
-            }
-            
             // User profile and settings tab
             ProfileView()
                 .tabItem {

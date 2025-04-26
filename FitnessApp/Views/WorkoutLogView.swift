@@ -4,7 +4,6 @@ struct WorkoutLogView: View {
     @EnvironmentObject var userManager: UserManager
     @State private var showingAddWorkout = false
     @State private var showingInsights = false
-    @State private var showingQuickWorkout = false
     @State private var showingTargetedWorkout = false
     @State private var selectedWorkout: WorkoutRecord?
     @State private var showingWorkoutDetail = false
@@ -45,10 +44,6 @@ struct WorkoutLogView: View {
                                 Label("Workout Insights", systemImage: "chart.bar")
                             }
                             
-                            Button(action: { showingQuickWorkout = true }) {
-                                Label("Quick Workout", systemImage: "figure.run")
-                            }
-                            
                             Button(action: { showingTargetedWorkout = true }) {
                                 Label("Targeted Workout", systemImage: "figure.strengthtraining.traditional")
                             }
@@ -68,9 +63,6 @@ struct WorkoutLogView: View {
             .sheet(isPresented: $showingInsights) {
                 WorkoutInsightsView()
             }
-            .sheet(isPresented: $showingQuickWorkout) {
-                QuickWorkoutView()
-            }
             .sheet(isPresented: $showingTargetedWorkout) {
                 TargetedWorkoutView()
             }
@@ -84,9 +76,15 @@ struct WorkoutLogView: View {
     
     private var groupedWorkouts: [Date: [WorkoutRecord]] {
         let calendar = Calendar.current
-        return Dictionary(grouping: userManager.user.workoutHistory) { workout in
-            calendar.startOfDay(for: workout.date)
+        let workouts = userManager.user.workoutHistory
+        var grouped: [Date: [WorkoutRecord]] = [:]
+        
+        for workout in workouts {
+            let day = calendar.startOfDay(for: workout.date)
+            grouped[day, default: []].append(workout)
         }
+        
+        return grouped
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -229,6 +227,73 @@ struct DetailRow: View {
             Spacer()
             Text(value)
                 .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct QuickWorkoutView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var userManager: UserManager
+    @State private var selectedType: WorkoutRecord.WorkoutType = .cardio
+    @State private var duration: TimeInterval = 30 * 60 // 30 minutes
+    @State private var intensity: WorkoutRecord.Intensity = .moderate
+    @State private var notes: String = ""
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Workout Type")) {
+                    Picker("Type", selection: $selectedType) {
+                        ForEach(WorkoutRecord.WorkoutType.allCases, id: \.self) { type in
+                            Text(type.rawValue.capitalized).tag(type)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Duration")) {
+                    Picker("Duration", selection: $duration) {
+                        ForEach([15, 30, 45, 60, 90], id: \.self) { minutes in
+                            Text("\(minutes) minutes").tag(TimeInterval(minutes * 60))
+                        }
+                    }
+                }
+                
+                Section(header: Text("Intensity")) {
+                    Picker("Intensity", selection: $intensity) {
+                        ForEach(WorkoutRecord.Intensity.allCases, id: \.self) { intensity in
+                            Text(intensity.rawValue.capitalized).tag(intensity)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Notes")) {
+                    TextField("Add notes (optional)", text: $notes, axis: .vertical)
+                        .lineLimit(3)
+                }
+            }
+            .navigationTitle("Quick Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let workout = WorkoutRecord(
+                            type: selectedType,
+                            duration: duration,
+                            intensity: intensity,
+                            notes: notes.isEmpty ? nil : notes
+                        )
+                        userManager.user.workoutHistory.append(workout)
+                        userManager.saveUser()
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }
