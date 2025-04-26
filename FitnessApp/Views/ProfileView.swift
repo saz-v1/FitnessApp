@@ -27,6 +27,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationView {
             Form {
+                notificationsSection
                 measurementsSection
                 personalSection
                 goalsSection
@@ -48,6 +49,24 @@ struct ProfileView: View {
     }
     
     // MARK: - View Sections
+    
+    /// Section for managing app notifications
+    private var notificationsSection: some View {
+        Section {
+            NavigationLink {
+                NotificationSettingsView()
+            } label: {
+                HStack {
+                    Image(systemName: "bell.fill")
+                    Text("Notifications")
+                }
+            }
+        } header: {
+            Text("App Settings")
+        } footer: {
+            Text("Manage your notification preferences to stay on track with your fitness goals.")
+        }
+    }
     
     /// Section containing user's height and weight measurements with unit system toggle
     private var measurementsSection: some View {

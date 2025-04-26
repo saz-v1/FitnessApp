@@ -194,6 +194,10 @@ struct DashboardView: View {
                     }
                     .padding(.horizontal)
                     
+                    // Achievements Summary
+                    AchievementSummaryCard(userManager: userManager)
+                        .padding(.horizontal)
+                    
                     // Recent Workouts
                     RecentWorkoutsView()
                         .padding(.horizontal)
