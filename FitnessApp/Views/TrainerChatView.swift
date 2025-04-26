@@ -69,7 +69,7 @@ struct TrainerChatView: View {
                 .background(Color(.systemBackground))
             }
         }
-        .navigationTitle("FitSwift Personal AI Trainer")
+        .navigationTitle("FitSwift AI Trainer")
         .toolbar {
             // Clear chat button in the navigation bar
             ToolbarItem(placement: .navigationBarTrailing) {
