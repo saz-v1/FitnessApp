@@ -6,28 +6,68 @@ struct WorkoutLogView: View {
     @State private var showingInsights = false
     @State private var showingTargetedWorkout = false
     @State private var selectedWorkout: WorkoutRecord?
+    @State private var isEditing = false
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { date in
-                    Section(header: Text(formatDate(date))) {
-                        ForEach(groupedWorkouts[date] ?? []) { workout in
-                            WorkoutRow(workout: workout)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedWorkout = workout
-                                }
-                        }
-                        .onDelete { indices in
-                            indices.forEach { index in
-                                if let workout = groupedWorkouts[date]?[index] {
-                                    userManager.deleteWorkout(workout)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Stats Overview
+                    HStack(spacing: 20) {
+                        // Total Workouts Card
+                        WorkoutStatCard(
+                            title: "Total Workouts",
+                            value: "\(userManager.user.workoutHistory.count)",
+                            icon: "figure.run",
+                            color: .blue
+                        )
+                        
+                        // This Week Card
+                        WorkoutStatCard(
+                            title: "This Week",
+                            value: "\(workoutsThisWeek)",
+                            icon: "calendar",
+                            color: .green
+                        )
+                        
+                        // Streak Card
+                        WorkoutStatCard(
+                            title: "Current Streak",
+                            value: "\(currentStreak)",
+                            icon: "flame.fill",
+                            color: .orange
+                        )
+                    }
+                    .padding(.horizontal)
+                    
+                    // Workout History
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Workout History")
+                            .font(.title2)
+                            .bold()
+                            .padding(.horizontal)
+                        
+                        ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { date in
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(formatDate(date))
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                    .padding(.horizontal)
+                                
+                                ForEach(groupedWorkouts[date] ?? []) { workout in
+                                    WorkoutCard(workout: workout, isEditing: isEditing) {
+                                        if isEditing {
+                                            userManager.deleteWorkout(workout)
+                                        } else {
+                                            selectedWorkout = workout
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                .padding(.vertical)
             }
             .navigationTitle("Workouts")
             .toolbar {
@@ -49,7 +89,9 @@ struct WorkoutLogView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton()
+                    Button(isEditing ? "Done" : "Edit") {
+                        isEditing.toggle()
+                    }
                 }
             }
         }
@@ -81,6 +123,38 @@ struct WorkoutLogView: View {
         }
     }
     
+    private var workoutsThisWeek: Int {
+        let calendar = Calendar.current
+        let today = Date()
+        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
+        
+        return userManager.user.workoutHistory.filter { workout in
+            workout.date >= startOfWeek && workout.date <= today
+        }.count
+    }
+    
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var streak = 0
+        var currentDate = today
+        
+        while true {
+            let hasWorkout = userManager.user.workoutHistory.contains { workout in
+                calendar.isDate(workout.date, inSameDayAs: currentDate)
+            }
+            
+            if hasWorkout {
+                streak += 1
+                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
+            } else {
+                break
+            }
+        }
+        
+        return streak
+    }
+    
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -88,40 +162,95 @@ struct WorkoutLogView: View {
     }
 }
 
-struct WorkoutRow: View {
-    let workout: WorkoutRecord
+struct WorkoutStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let color: Color
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(workout.type.rawValue)
-                    .font(.headline)
-                
-                Spacer()
-                
-                Text(formatDate(workout.date))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
             
-            HStack(spacing: 16) {
-                Label(formatDuration(workout.duration), systemImage: "clock")
-                    .foregroundColor(.secondary)
-                
-                if let calories = workout.caloriesBurned {
-                    Label("\(Int(calories)) kcal", systemImage: "flame.fill")
-                        .foregroundColor(.orange)
-                }
-                
-                if let exercises = workout.exercises, !exercises.isEmpty {
-                    Label("\(exercises.count) exercises", systemImage: "figure.run")
+            Text(value)
+                .font(.title)
+                .bold()
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 100)
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+struct WorkoutCard: View {
+    let workout: WorkoutRecord
+    let isEditing: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(workout.type.rawValue)
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Text(formatDate(workout.date))
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+                
+                HStack(spacing: 16) {
+                    Label(formatDuration(workout.duration), systemImage: "clock")
+                        .foregroundColor(.secondary)
+                    
+                    if let calories = workout.caloriesBurned {
+                        Label("\(Int(calories)) kcal", systemImage: "flame.fill")
+                            .foregroundColor(.orange)
+                    }
+                    
+                    if let exercises = workout.exercises, !exercises.isEmpty {
+                        Label("\(exercises.count) exercises", systemImage: "figure.run")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .font(.subheadline)
             }
-            .font(.subheadline)
+            
+            if isEditing {
+                Button(action: onTap) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                        .font(.body)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8)
+            }
         }
-        .padding(.vertical, 8)
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .padding(.horizontal)
         .contentShape(Rectangle())
+        .onTapGesture {
+            if !isEditing {
+                onTap()
+            }
+            onTap()
+        }
     }
     
     private func formatDate(_ date: Date) -> String {
