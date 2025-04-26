@@ -196,6 +196,43 @@ struct WeightDetailView: View {
                         .chartXSelection(value: $scrollPosition)
                         .chartScrollableAxes(.horizontal)
                         .chartXScale(domain: getDateRange())
+                        
+                        // Legend
+                        HStack(spacing: 20) {
+                            // Area fill legend
+                            HStack(spacing: 8) {
+                                Rectangle()
+                                    .fill(.linearGradient(colors: [.green.opacity(0.3), .green.opacity(0.1)], startPoint: .top, endPoint: .bottom))
+                                    .frame(width: 20, height: 20)
+                                    .cornerRadius(4)
+                                Text("Weight Trend")
+                                    .font(.caption)
+                            }
+                            
+                            // Line and points legend
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(.green)
+                                    .frame(width: 8, height: 8)
+                                Text("Data Points")
+                                    .font(.caption)
+                            }
+                            
+                            // Goal line legend
+                            if let goalWeight = userManager.user.goalWeight,
+                               !goalWeight.isNaN && goalWeight.isFinite {
+                                HStack(spacing: 8) {
+                                    Rectangle()
+                                        .fill(.red)
+                                        .frame(width: 20, height: 2)
+                                        .cornerRadius(1)
+                                    Text("Goal")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
                     }
                 }
                 .padding(16)

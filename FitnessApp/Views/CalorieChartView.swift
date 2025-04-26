@@ -167,6 +167,43 @@ struct CalorieChartView: View {
                 .chartXSelection(value: $scrollPosition)
                 .chartScrollableAxes(.horizontal)
                 .chartXScale(domain: getDateRange())
+                
+                // Legend
+                HStack(spacing: 20) {
+                    HStack(spacing: 8) {
+                        Rectangle()
+                            .fill(.linearGradient(colors: [.green.opacity(0.7), .orange.opacity(0.3)], startPoint: .top, endPoint: .bottom))
+                            .frame(width: 20, height: 20)
+                            .cornerRadius(4)
+                        Text("Daily Calories")
+                            .font(.caption)
+                    }
+                    
+                    if showAnnotations {
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(.orange)
+                                .frame(width: 20, height: 2)
+                                .cornerRadius(1)
+                            Text("Maintenance")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                        
+                        if userManager.calculateWeeklyCalorieTarget() != nil {
+                            HStack(spacing: 8) {
+                                Rectangle()
+                                    .fill(.red)
+                                    .frame(width: 20, height: 2)
+                                    .cornerRadius(1)
+                                Text("Goal Target")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 8)
             }
         }
         .sheet(isPresented: $isAddingCalories) {
