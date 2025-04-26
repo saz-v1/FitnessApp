@@ -1,5 +1,26 @@
 import SwiftUI
 
+// MARK: - View Modifiers
+private struct CardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+    }
+}
+
+private struct StatCardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .frame(height: 100)
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+    }
+}
+
 // MARK: - Full Achievements View
 struct AchievementsView: View {
     @EnvironmentObject var userManager: UserManager
@@ -15,71 +36,32 @@ struct AchievementsView: View {
                 // Stats Overview
                 HStack(spacing: 20) {
                     // Level Card
-                    VStack(spacing: 8) {
-                        Text("\(achievementManager.currentLevel)")
-                            .font(.title)
-                            .bold()
-                        Text(achievementManager.levelTitle())
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text("\(achievementManager.pointsInCurrentLevel)/\(achievementManager.pointsToNextLevel) pts")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                    .frame(height: 100)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    AchievementStatCard(
+                        title: achievementManager.levelTitle(),
+                        value: "\(achievementManager.currentLevel)",
+                        subtitle: "\(achievementManager.pointsInCurrentLevel)/\(achievementManager.pointsToNextLevel) pts"
+                    )
                     
                     // Points Card
-                    VStack(spacing: 8) {
-                        Text("\(achievementManager.totalPoints)")
-                            .font(.title)
-                            .bold()
-                        Text("Total Points")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                    .frame(height: 100)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    AchievementStatCard(
+                        title: "Total Points",
+                        value: "\(achievementManager.totalPoints)"
+                    )
                     
                     // Current Streak Card
-                    VStack(spacing: 8) {
-                        Text("\(achievementManager.currentStreak)")
-                            .font(.title)
-                            .bold()
-                        Text("Day Streak")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                    .frame(height: 100)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    AchievementStatCard(
+                        title: "Day Streak",
+                        value: "\(achievementManager.currentStreak)"
+                    )
                 }
                 .padding(.horizontal)
                 
                 // Achievement Categories
                 ForEach(Achievement.Category.allCases, id: \.self) { category in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(category.rawValue)
-                            .font(.headline)
-                            .padding(.horizontal)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(achievementManager.achievements.filter { $0.category == category }) { achievement in
-                                    AchievementCard(achievement: achievement)
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                    }
+                    AchievementCategorySection(
+                        category: category,
+                        achievements: achievementManager.achievements.filter { $0.category == category }
+                    )
                 }
             }
             .padding(.vertical)
@@ -87,6 +69,52 @@ struct AchievementsView: View {
         .navigationTitle("Achievements")
         .onAppear {
             achievementManager.checkAchievements()
+        }
+    }
+}
+
+// MARK: - Supporting Views
+private struct AchievementStatCard: View {
+    let title: String
+    let value: String
+    var subtitle: String? = nil
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(value)
+                .font(.title)
+                .bold()
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .modifier(StatCardStyle())
+    }
+}
+
+private struct AchievementCategorySection: View {
+    let category: Achievement.Category
+    let achievements: [Achievement]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(category.rawValue)
+                .font(.headline)
+                .padding(.horizontal)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(achievements) { achievement in
+                        AchievementCard(achievement: achievement)
+                    }
+                }
+                .padding(.horizontal)
+            }
         }
     }
 }
@@ -141,9 +169,7 @@ struct AchievementCard: View {
             }
         }
         .frame(width: 120, height: 180)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .modifier(CardStyle())
     }
 }
 
