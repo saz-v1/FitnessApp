@@ -1,26 +1,27 @@
 import Foundation
 import SwiftUI
 
-/// Manages user data and calculations throughout the app
+// MARK: - User Manager
+/// Central manager for user data, calculations, and persistence throughout the app
 class UserManager: ObservableObject {
+    // MARK: - Properties
     /// Published user object that will notify views of changes
     @Published var user: User
     
     /// Singleton instance for app-wide access
     static let shared = UserManager()
     
+    // MARK: - Initialization
     /// Initialize with saved user data or defaults
     init() {
-        // Attempt to load saved user data from UserDefaults
         if let savedUser = UserDefaults.standard.data(forKey: "user"),
            let decodedUser = try? JSONDecoder().decode(User.self, from: savedUser) {
             self.user = decodedUser
         } else {
-            // Set default values if no saved data exists
             self.user = User(
                 height: 170,
                 weight: 70,
-                age: 25,           // Add default age
+                age: 25,
                 gender: .other,
                 usesMetric: true,
                 activityLevel: .moderatelyActive,
@@ -31,6 +32,7 @@ class UserManager: ObservableObject {
         }
     }
     
+    // MARK: - Data Persistence
     /// Saves user data to UserDefaults
     func saveUser() {
         if let encoded = try? JSONEncoder().encode(user) {
@@ -38,6 +40,7 @@ class UserManager: ObservableObject {
         }
     }
     
+    // MARK: - Health Calculations
     /// Calculates user's BMI based on current height and weight
     func calculateBMI() -> Double {
         let heightInMeters = user.usesMetric ? user.height / 100 : user.height * 0.0254
@@ -47,11 +50,9 @@ class UserManager: ObservableObject {
     
     /// Calculates daily caloric needs using Harris-Benedict equation
     func calculateDailyCalories() -> Double {
-        // Convert measurements to metric for calculation
         let weightInKg = user.usesMetric ? user.weight : user.weight * 0.453592
         let heightInCm = user.usesMetric ? user.height : user.height * 2.54
         
-        // Calculate base metabolic rate (BMR)
         let bmr: Double
         switch user.gender {
         case .male:
@@ -59,14 +60,25 @@ class UserManager: ObservableObject {
         case .female:
             bmr = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * 25)
         case .other:
-            // Use average of male and female calculations
             bmr = (88.362 + 447.593) / 2 + (11.322 * weightInKg) + (3.9485 * heightInCm) - (5.0035 * 25)
         }
         
-        // Apply activity level multiplier to get total daily energy expenditure
         return bmr * user.activityLevel.multiplier
     }
     
+    /// Calculate weekly calorie target based on weight goal
+    func calculateWeeklyCalorieTarget() -> Double? {
+        guard let goalWeight = user.goalWeight else { return nil }
+        
+        let weightDiff = goalWeight - user.weight
+        let totalCalorieDiff = weightDiff * 7700 // 7700 calories roughly equals 1kg of body weight
+        let weeklyCalorieDiff = totalCalorieDiff / 12 // Aim to reach goal in 12 weeks
+        let dailyCalorieAdjustment = weeklyCalorieDiff / 7
+        
+        return calculateDailyCalories() + dailyCalorieAdjustment
+    }
+    
+    // MARK: - BMI Categories
     /// BMI category with associated health information
     enum BMICategory {
         case underweight
@@ -100,23 +112,7 @@ class UserManager: ObservableObject {
         }
     }
     
-    /// Calculate weekly calorie target based on weight goal
-    func calculateWeeklyCalorieTarget() -> Double? {
-        guard let goalWeight = user.goalWeight else { return nil }
-        
-        let weightDiff = goalWeight - user.weight
-        // 7700 calories roughly equals 1kg of body weight
-        let totalCalorieDiff = weightDiff * 7700
-        
-        // Aim to reach goal in 12 weeks (safe weight loss/gain rate)
-        let weeklyCalorieDiff = totalCalorieDiff / 12
-        
-        // Daily calorie adjustment
-        let dailyCalorieAdjustment = weeklyCalorieDiff / 7
-        
-        return calculateDailyCalories() + dailyCalorieAdjustment
-    }
-    
+    // MARK: - User Data Management
     /// Update user's weight and save changes
     func updateWeight(_ weight: Double) {
         user.weight = weight
@@ -131,12 +127,10 @@ class UserManager: ObservableObject {
     
     /// Sync workouts from external sources, avoiding duplicates
     func syncWorkouts(_ workouts: [WorkoutRecord]) {
-        // Create a set of existing workout identifiers (date + type combination)
         let existingWorkoutIdentifiers = Set(user.workoutHistory.map { 
             "\($0.date.formatted(date: .numeric, time: .omitted))-\($0.type.rawValue)"
         })
         
-        // Only add workouts that don't already exist
         let newWorkouts = workouts.filter { workout in
             let identifier = "\(workout.date.formatted(date: .numeric, time: .omitted))-\(workout.type.rawValue)"
             return !existingWorkoutIdentifiers.contains(identifier)
@@ -154,34 +148,35 @@ class UserManager: ObservableObject {
         saveUser()
     }
     
+    // MARK: - Unit Conversion
     /// Toggle between metric and imperial units
     func toggleUnits() {
         user.toggleUnits()
         saveUser()
     }
     
-    // Helper function to convert weight for display
+    /// Convert weight for display based on user's preferred unit system
     func displayWeight(_ weight: Double) -> Double {
         user.usesMetric ? weight : (weight * 2.20462).rounded(to: 1)
     }
     
-    // Helper function to convert height for display
+    /// Convert height for display based on user's preferred unit system
     func displayHeight(_ height: Double) -> Double {
         user.usesMetric ? height : (height * 0.393701).rounded(to: 1)
     }
     
-    // Helper function to get the weight unit string
+    /// Get the weight unit string based on user's preferred unit system
     var weightUnit: String {
         user.usesMetric ? "kg" : "lbs"
     }
     
-    // Helper function to get the height unit string
+    /// Get the height unit string based on user's preferred unit system
     var heightUnit: String {
         user.usesMetric ? "cm" : "in"
     }
 }
 
-/// Extension to add unit conversion functionality to User
+// MARK: - User Unit Conversion
 extension User {
     /// Toggle between metric and imperial units, converting all measurements
     mutating func toggleUnits() {
@@ -204,7 +199,7 @@ extension User {
     }
 }
 
-// Helper extension for rounding to specific decimal places
+// MARK: - Double Extension
 extension Double {
     /// Round a double to a specific number of decimal places
     func rounded(to places: Int) -> Double {
