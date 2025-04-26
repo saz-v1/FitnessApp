@@ -105,10 +105,10 @@ class WorkoutAnalyticsService: ObservableObject {
         guard !workouts.isEmpty else { return 0 }
         
         // Calculate total duration in minutes
-        let totalDurationMinutes = workouts.reduce(0) { $0 + $1.duration }
+        let totalDurationMinutes = workouts.reduce(0) { $0 + ($1.duration / 60) }
         
         // Calculate average by dividing total duration by number of workouts
-        return Double(totalDurationMinutes) / Double(workouts.count)
+        return totalDurationMinutes / Double(workouts.count)
     }
     
     private func getRecentProgressSummary(workouts: [WorkoutRecord]) -> String {

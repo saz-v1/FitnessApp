@@ -10,69 +10,55 @@ struct WorkoutInsightsView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 16) {
-                if isLoading {
-                    Spacer()
-                    ProgressView("Analyzing your workouts...")
-                        .progressViewStyle(CircularProgressViewStyle())
-                    Spacer()
-                } else if let error = errorMessage {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundColor(.red)
-                        Text(error)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.red)
-                        Button("Try Again") {
-                            Task {
-                                await loadInsights()
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding()
-                    Spacer()
-                } else if !insights.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(insights)
-                                .padding()
-                        }
-                    }
-                } else {
-                    Spacer()
-                    ContentUnavailableView(
-                        "No Insights Yet",
-                        systemImage: "chart.bar",
-                        description: Text("Tap refresh to analyze your workout patterns")
-                    )
-                    Spacer()
-                }
-            }
-            .navigationTitle("Workout Insights")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+        VStack(spacing: 24) {
+            if isLoading {
+                Spacer()
+                ProgressView("Analyzing your workouts...")
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .font(.headline)
+                Spacer()
+            } else if let error = errorMessage {
+                Spacer()
+                VStack(spacing: 16) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.red)
+                    Text(error)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.red)
+                    Button("Try Again") {
                         Task {
                             await loadInsights()
                         }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
                     }
-                    .disabled(isLoading)
+                    .buttonStyle(.bordered)
+                    .font(.headline)
+                    .frame(height: 44)
                 }
-                
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        dismiss()
+                .padding(24)
+                Spacer()
+            } else if !insights.isEmpty {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        Text(insights)
+                            .font(.body)
+                            .padding(20)
                     }
                 }
+            } else {
+                Spacer()
+                ContentUnavailableView(
+                    "No Insights Yet",
+                    systemImage: "chart.bar",
+                    description: Text("Complete more workouts to get personalized insights")
+                )
+                .font(.headline)
+                Spacer()
             }
         }
+        .navigationTitle("Workout Insights")
+        .navigationBarTitleDisplayMode(.inline)
         .task {
             await loadInsights()
         }
@@ -93,6 +79,8 @@ struct WorkoutInsightsView: View {
 }
 
 #Preview {
-    WorkoutInsightsView()
-        .environmentObject(UserManager())
+    NavigationView {
+        WorkoutInsightsView()
+            .environmentObject(UserManager())
+    }
 } 

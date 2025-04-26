@@ -265,31 +265,6 @@ class ClaudeService: ObservableObject {
         }
     }
     
-    /// Generates a targeted workout plan based on user profile and focus area
-    /// - Parameters:
-    ///   - user: The user's profile data
-    ///   - focusArea: The specific area to focus on (e.g., "Chest", "Legs")
-    /// - Returns: A detailed workout plan
-    func generateTargetedWorkout(user: User, focusArea: String) async throws -> String {
-        let prompt = """
-        Create a detailed workout plan for a \(user.age)-year-old \(user.gender.rawValue.lowercased()) focusing on \(focusArea).
-        Current weight: \(user.weight) \(user.usesMetric ? "kg" : "lbs")
-        Activity level: \(user.activityLevel.rawValue)
-        
-        Include:
-        1. Warm-up exercises
-        2. Main exercises with sets, reps, and rest periods
-        3. Cool-down exercises
-        4. Tips for proper form
-        5. Expected duration
-        6. Equipment needed
-        
-        Format the response in a clear, easy-to-read structure.
-        """
-        
-        return try await makeRequest(prompt: prompt)
-    }
-    
     /// Generates workout analytics and insights
     /// - Parameter workouts: Array of workout records to analyze
     /// - Returns: Analysis and insights about the workouts

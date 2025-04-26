@@ -9,14 +9,15 @@ struct HealthDataView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(spacing: 24) {
                 // Today's Summary
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Today's Summary")
-                        .font(.headline)
+                        .font(.title2)
+                        .fontWeight(.bold)
                         .padding(.horizontal)
                     
-                    LazyVGrid(columns: columns, spacing: 16) {
+                    LazyVGrid(columns: columns, spacing: 20) {
                         // Steps Card
                         HealthDataCard(
                             title: "Steps",
@@ -32,50 +33,36 @@ struct HealthDataView: View {
                             value: String(format: "%.0f", healthKitManager.activeEnergy),
                             subtitle: "kcal today",
                             icon: "flame.fill",
-                            color: .green
+                            color: .orange
                         )
                         
                         // Heart Rate Card
                         HealthDataCard(
                             title: "Heart Rate",
-                            value: healthKitManager.heartRate > 0 
-                                ? String(format: "%.0f", healthKitManager.heartRate)
-                                : "No data",
-                            subtitle: healthKitManager.heartRate > 0 
-                                ? "BPM • \(formatTimestamp(healthKitManager.heartRateTimestamp))"
-                                : "Check your Apple Watch",
+                            value: String(format: "%.0f", healthKitManager.heartRate),
+                            subtitle: "bpm",
                             icon: "heart.fill",
-                            color: .green
+                            color: .red
                         )
                         
-                        // Sleep Card
+                        // Resting Energy Card
                         HealthDataCard(
-                            title: "Sleep",
-                            value: String(format: "%.1f", healthKitManager.sleepHours),
-                            subtitle: "hours",
+                            title: "Resting Energy",
+                            value: String(format: "%.0f", healthKitManager.restingEnergy),
+                            subtitle: "kcal today",
                             icon: "bed.double.fill",
-                            color: .green
+                            color: .blue
                         )
                     }
                     .padding(.horizontal)
                 }
             }
-            .padding(.vertical)
+            .padding(.vertical, 24)
         }
         .navigationTitle("Health Data")
         .task {
             await healthKitManager.fetchTodaysHealthData()
         }
-    }
-    
-    private func formatTimestamp(_ date: Date?) -> String {
-        guard let date = date else { return "" }
-        
-        let now = Date()
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        
-        return formatter.localizedString(for: date, relativeTo: now)
     }
 }
 
@@ -87,38 +74,35 @@ struct HealthDataCard: View {
     let color: Color
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             // Icon at the top
             Image(systemName: icon)
-                .font(.title)
+                .font(.system(size: 32))
                 .foregroundColor(color)
             
             // Title
             Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.headline)
+                .foregroundColor(.primary)
             
             // Value and subtitle
-            VStack(spacing: 4) {
+            VStack(spacing: 8) {
                 Text(value)
-                    .font(.title2)
-                    .bold()
+                    .font(.title)
+                    .fontWeight(.bold)
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 140) // Fixed height for consistency
-        .padding()
+        .frame(height: 160)
+        .padding(20)
         .background(Color(.systemGray6))
-        .cornerRadius(12)
-        // Make tap target at least 44x44 points
-        .contentShape(Rectangle())
+        .cornerRadius(16)
     }
 }
 
-// Preview provider for SwiftUI canvas
 #Preview {
     NavigationView {
         HealthDataView()

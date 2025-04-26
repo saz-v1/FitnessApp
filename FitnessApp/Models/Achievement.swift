@@ -28,7 +28,6 @@ class AchievementManager: ObservableObject {
     @Published var achievements: [Achievement] = []
     @Published var totalPoints: Int = 0
     @Published var currentStreak: Int = 0
-    @Published var longestStreak: Int = 0
     @Published var currentLevel: Int = 1
     @Published var pointsToNextLevel: Int = 0
     @Published var pointsInCurrentLevel: Int = 0
@@ -73,12 +72,6 @@ class AchievementManager: ObservableObject {
         
         // Calculate points in current level
         pointsInCurrentLevel = totalPoints - pointsPerLevel[currentLevel - 1]
-    }
-    
-    /// Get the total points required for a specific level
-    func pointsRequiredForLevel(_ level: Int) -> Int {
-        guard level > 0 && level <= pointsPerLevel.count else { return 0 }
-        return pointsPerLevel[level - 1]
     }
     
     /// Get the level title based on the current level
@@ -295,7 +288,6 @@ class AchievementManager: ObservableObject {
         }
         
         currentStreak = streak
-        longestStreak = max(longestStreak, streak)
         
         if streak >= 7 {
             unlockAchievement(id: "one_week_streak")
@@ -385,7 +377,6 @@ class AchievementManager: ObservableObject {
         }
         
         currentStreak = streak
-        longestStreak = max(longestStreak, streak)
     }
     
     // MARK: - Data Persistence
@@ -396,7 +387,6 @@ class AchievementManager: ObservableObject {
         }
         UserDefaults.standard.set(totalPoints, forKey: "totalPoints")
         UserDefaults.standard.set(currentStreak, forKey: "currentStreak")
-        UserDefaults.standard.set(longestStreak, forKey: "longestStreak")
         UserDefaults.standard.set(currentLevel, forKey: "currentLevel")
     }
 } 

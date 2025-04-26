@@ -9,6 +9,7 @@ class HealthKitManager: ObservableObject {
     @Published var heartRate: Double = 0
     @Published var heartRateTimestamp: Date?
     @Published var sleepHours: Double = 0
+    @Published var restingEnergy: Double = 0
     @Published var workouts: [HKWorkout] = []
     
     static let shared = HealthKitManager()
@@ -120,6 +121,7 @@ class HealthKitManager: ObservableObject {
                         date: workout.startDate,
                         type: self?.mapWorkoutType(workout.workoutActivityType) ?? .other,
                         duration: workout.duration,
+                        intensity: .moderate,
                         notes: nil
                     )
                 }
@@ -141,6 +143,7 @@ class HealthKitManager: ObservableObject {
                 group.addTask { await self.fetchActiveEnergy() }
                 group.addTask { await self.fetchHeartRate() }
                 group.addTask { await self.fetchSleepHours() }
+                group.addTask { await self.fetchRestingEnergy() }
                 group.addTask { await self.fetchWorkoutHistory() }
             }
         } catch {
@@ -271,6 +274,26 @@ class HealthKitManager: ObservableObject {
             
             Task { @MainActor [weak self] in
                 self?.sleepHours = hours
+            }
+        }
+        
+        healthStore.execute(query)
+    }
+    
+    private func fetchRestingEnergy() async {
+        guard let energyType = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned) else { return }
+        
+        let predicate = createTodayPredicate()
+        
+        let query = HKStatisticsQuery(
+            quantityType: energyType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum
+        ) { [weak self] _, statistics, _ in
+            guard let sum = statistics?.sumQuantity() else { return }
+            let calories = sum.doubleValue(for: .kilocalorie())
+            Task { @MainActor [weak self] in
+                self?.restingEnergy = calories
             }
         }
         
