@@ -6,58 +6,56 @@ struct WorkoutLogView: View {
     @State private var showingInsights = false
     @State private var showingTargetedWorkout = false
     @State private var selectedWorkout: WorkoutRecord?
-    @State private var showingWorkoutDetail = false
-    @State private var isEditing = false
     
     var body: some View {
         NavigationView {
-            workoutList
-        }
-    }
-    
-    private var workoutList: some View {
-        List {
-            ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { date in
-                Section(header: Text(formatDate(date))) {
-                    ForEach(groupedWorkouts[date] ?? []) { workout in
-                        WorkoutRow(workout: workout)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedWorkout = workout
-                                showingWorkoutDetail = true
-                            }
-                    }
-                    .onDelete { indices in
-                        indices.forEach { index in
-                            if let workout = groupedWorkouts[date]?[index] {
-                                userManager.deleteWorkout(workout)
+            List {
+                ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { date in
+                    Section(header: Text(formatDate(date))) {
+                        ForEach(groupedWorkouts[date] ?? []) { workout in
+                            WorkoutRow(workout: workout)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedWorkout = workout
+                                }
+                        }
+                        .onDelete { indices in
+                            indices.forEach { index in
+                                if let workout = groupedWorkouts[date]?[index] {
+                                    userManager.deleteWorkout(workout)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        .navigationTitle("Workouts")
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button(action: { showingAddWorkout = true }) {
-                        Label("Add Workout", systemImage: "plus")
+            .navigationTitle("Workouts")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(action: { showingAddWorkout = true }) {
+                            Label("Add Workout", systemImage: "plus")
+                        }
+                        Button(action: { showingInsights = true }) {
+                            Label("View Insights", systemImage: "chart.bar")
+                        }
+                        Button(action: { showingTargetedWorkout = true }) {
+                            Label("Get Targeted Workout", systemImage: "figure.run")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 20))
                     }
-                    Button(action: { showingInsights = true }) {
-                        Label("View Insights", systemImage: "chart.bar")
-                    }
-                    Button(action: { showingTargetedWorkout = true }) {
-                        Label("Get Targeted Workout", systemImage: "figure.run")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 20))
+                }
+                
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
                 }
             }
-            
-            ToolbarItem(placement: .navigationBarLeading) {
-                EditButton()
+        }
+        .sheet(item: $selectedWorkout) { workout in
+            NavigationView {
+                WorkoutDetailView(workout: workout)
             }
         }
         .sheet(isPresented: $showingAddWorkout) {
@@ -73,15 +71,6 @@ struct WorkoutLogView: View {
         .sheet(isPresented: $showingTargetedWorkout) {
             NavigationView {
                 TargetedWorkoutView()
-            }
-        }
-        .sheet(isPresented: $showingWorkoutDetail, onDismiss: {
-            selectedWorkout = nil
-        }) {
-            if let workout = selectedWorkout {
-                NavigationView {
-                    WorkoutDetailView(workout: workout)
-                }
             }
         }
     }
@@ -159,7 +148,6 @@ struct WorkoutDetailView: View {
     let workout: WorkoutRecord
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var userManager: UserManager
-    @State private var isEditing = false
     
     var body: some View {
         List {
