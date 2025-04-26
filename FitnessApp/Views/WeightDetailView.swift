@@ -19,13 +19,13 @@ struct WeightDetailView: View {
     
     /// Calculates the Y-axis range for the chart based on weight data
     private var weightRange: ClosedRange<Double> {
-        let weights = userManager.user.weightHistory.map { $0.weight }
+        let weights = userManager.user.weightHistory.map { userManager.displayWeight($0.weight) }
             .filter { !$0.isNaN && $0.isFinite }
-        let goalWeight = userManager.user.goalWeight
+        let goalWeight = userManager.user.goalWeight.map { userManager.displayWeight($0) }
         let allWeights = goalWeight.map { weights + [$0] } ?? weights
         
         if allWeights.isEmpty {
-            let currentWeight = userManager.user.weight
+            let currentWeight = userManager.displayWeight(userManager.user.weight)
             guard !currentWeight.isNaN && currentWeight.isFinite else {
                 return 0...100
             }
@@ -114,7 +114,7 @@ struct WeightDetailView: View {
                                 if !record.weight.isNaN && record.weight.isFinite {
                                     AreaMark(
                                         x: .value("Date", record.date),
-                                        y: .value("Weight", record.weight)
+                                        y: .value("Weight", userManager.displayWeight(record.weight))
                                     )
                                     .foregroundStyle(
                                         .linearGradient(
@@ -131,7 +131,7 @@ struct WeightDetailView: View {
                                 if !record.weight.isNaN && record.weight.isFinite {
                                     LineMark(
                                         x: .value("Date", record.date),
-                                        y: .value("Weight", record.weight)
+                                        y: .value("Weight", userManager.displayWeight(record.weight))
                                     )
                                     .foregroundStyle(.green)
                                     .interpolationMethod(.catmullRom)
@@ -144,7 +144,7 @@ struct WeightDetailView: View {
                                 if !record.weight.isNaN && record.weight.isFinite {
                                     PointMark(
                                         x: .value("Date", record.date),
-                                        y: .value("Weight", record.weight)
+                                        y: .value("Weight", userManager.displayWeight(record.weight))
                                     )
                                     .foregroundStyle(.green)
                                     .symbolSize(8)
@@ -155,7 +155,7 @@ struct WeightDetailView: View {
                             if let goalWeight = userManager.user.goalWeight,
                                !goalWeight.isNaN && goalWeight.isFinite {
                                 RuleMark(
-                                    y: .value("Goal", goalWeight)
+                                    y: .value("Goal", userManager.displayWeight(goalWeight))
                                 )
                                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
                                 .foregroundStyle(.red)
@@ -282,11 +282,12 @@ struct WeightDetailView: View {
 struct WeightHistoryRow: View {
     let record: WeightRecord
     let usesMetric: Bool
+    @EnvironmentObject var userManager: UserManager
     
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(format: "%.1f", record.weight))
+                Text(String(format: "%.1f", userManager.displayWeight(record.weight)))
                     .font(.title3)
                     .bold()
                 + Text(" \(usesMetric ? "kg" : "lbs")")
