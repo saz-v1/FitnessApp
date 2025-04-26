@@ -80,7 +80,6 @@ class NotificationManager: NSObject, ObservableObject {
         content.title = title
         content.body = body
         content.sound = .default
-        content.badge = 1
         content.threadIdentifier = "fitnessApp"
         content.categoryIdentifier = "FITNESS_CATEGORY"
         
@@ -107,7 +106,7 @@ class NotificationManager: NSObject, ObservableObject {
 // MARK: - UNUserNotificationCenterDelegate
 extension NotificationManager: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound, .badge, .list])
+        completionHandler([.banner, .sound, .list])
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
