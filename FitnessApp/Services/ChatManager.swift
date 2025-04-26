@@ -20,6 +20,17 @@ class ChatManager: ObservableObject {
     /// Key used to store chat messages in UserDefaults
     private let messagesKey = "chatMessages"
     
+    /// List of restricted commands and keywords
+    private let restrictedKeywords = [
+        "jailbreak", "hack", "exploit", "bypass", "root", "admin",
+        "sudo", "system", "shell", "terminal", "command", "prompt",
+        "injection", "sql", "xss", "malware", "virus", "trojan",
+        "backdoor", "payload", "execute", "run", "script", "code",
+        "program", "developer", "debug", "breakpoint", "override",
+        "privilege", "escalation", "access", "control", "security",
+        "vulnerability", "attack", "penetration", "test", "pentest"
+    ]
+    
     /// Private initializer to enforce singleton pattern
     private init() {
         loadMessages()
@@ -40,9 +51,49 @@ class ChatManager: ObservableObject {
         }
     }
     
+    /// Validates a message for security and appropriateness
+    /// - Parameter message: The message to validate
+    /// - Returns: A tuple containing whether the message is valid and an error message if not
+    private func validateMessage(_ message: String) -> (isValid: Bool, error: String?) {
+        // Check for empty or whitespace-only messages
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedMessage.isEmpty {
+            return (false, "Please enter a message.")
+        }
+        
+        // Check for restricted keywords
+        let lowercasedMessage = message.lowercased()
+        for keyword in restrictedKeywords {
+            if lowercasedMessage.contains(keyword) {
+                return (false, "I'm sorry, but I can't assist with that type of request. Please keep your questions related to fitness and health.")
+            }
+        }
+        
+        // Check for suspicious patterns
+        if message.contains("```") || message.contains("`") {
+            return (false, "I'm sorry, but I can't execute code or commands. Please ask fitness-related questions only.")
+        }
+        
+        // Check for excessive length
+        if message.count > 500 {
+            return (false, "Your message is too long. Please keep it under 500 characters.")
+        }
+        
+        return (true, nil)
+    }
+    
     /// Sends a message and gets AI response
     /// - Parameter content: The message text to send
     func sendMessage(_ content: String) async {
+        // Validate the message first
+        let validation = validateMessage(content)
+        if !validation.isValid {
+            let errorMessage = ChatMessage(content: validation.error ?? "Invalid message.", isUser: false)
+            messages.append(errorMessage)
+            saveMessages()
+            return
+        }
+        
         // Add user message to the chat
         let userMessage = ChatMessage(content: content, isUser: true)
         messages.append(userMessage)
@@ -80,8 +131,17 @@ class ChatManager: ObservableObject {
     /// - Returns: The AI's response as a string
     private func getAIResponse(for message: String) async throws -> String {
         let prompt = """
-        You are a professional personal trainer and fitness expert. Respond to the user's message with helpful, 
-        informative, and encouraging advice about fitness, exercise, and health. Keep responses concise but informative.
+        You are FitSwift Personal AI Trainer, a professional personal trainer and fitness expert. 
+        Your role is strictly limited to providing fitness, exercise, and health-related advice.
+        You must not:
+        - Execute any commands or code
+        - Provide system or technical information
+        - Discuss security or hacking topics
+        - Share personal information
+        - Generate or discuss inappropriate content
+        
+        If a user asks about anything outside of fitness and health, respond with:
+        "I'm sorry, but I can only provide advice about fitness, exercise, and health-related topics. Please ask me about your fitness goals, workout routines, or nutrition instead."
         
         User message: \(message)
         """
