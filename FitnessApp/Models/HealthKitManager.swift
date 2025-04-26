@@ -9,7 +9,8 @@ class HealthKitManager: ObservableObject {
     @Published var heartRate: Double = 0
     @Published var heartRateTimestamp: Date?
     @Published var sleepHours: Double = 0
-    @Published var restingEnergy: Double = 0
+    @Published var standHours: Double = 0
+    @Published var exerciseMinutes: Double = 0
     @Published var workouts: [HKWorkout] = []
     
     static let shared = HealthKitManager()
@@ -21,6 +22,8 @@ class HealthKitManager: ObservableObject {
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+        HKObjectType.quantityType(forIdentifier: .appleStandHour)!,
+        HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
         HKObjectType.workoutType()
     ]
     
@@ -143,7 +146,8 @@ class HealthKitManager: ObservableObject {
                 group.addTask { await self.fetchActiveEnergy() }
                 group.addTask { await self.fetchHeartRate() }
                 group.addTask { await self.fetchSleepHours() }
-                group.addTask { await self.fetchRestingEnergy() }
+                group.addTask { await self.fetchStandHours() }
+                group.addTask { await self.fetchExerciseMinutes() }
                 group.addTask { await self.fetchWorkoutHistory() }
             }
         } catch {
@@ -280,20 +284,40 @@ class HealthKitManager: ObservableObject {
         healthStore.execute(query)
     }
     
-    private func fetchRestingEnergy() async {
-        guard let energyType = HKQuantityType.quantityType(forIdentifier: .basalEnergyBurned) else { return }
+    private func fetchStandHours() async {
+        guard let standType = HKQuantityType.quantityType(forIdentifier: .appleStandHour) else { return }
         
         let predicate = createTodayPredicate()
         
         let query = HKStatisticsQuery(
-            quantityType: energyType,
+            quantityType: standType,
             quantitySamplePredicate: predicate,
             options: .cumulativeSum
         ) { [weak self] _, statistics, _ in
             guard let sum = statistics?.sumQuantity() else { return }
-            let calories = sum.doubleValue(for: .kilocalorie())
+            let hours = sum.doubleValue(for: .hour())
             Task { @MainActor [weak self] in
-                self?.restingEnergy = calories
+                self?.standHours = hours
+            }
+        }
+        
+        healthStore.execute(query)
+    }
+    
+    private func fetchExerciseMinutes() async {
+        guard let exerciseType = HKQuantityType.quantityType(forIdentifier: .appleExerciseTime) else { return }
+        
+        let predicate = createTodayPredicate()
+        
+        let query = HKStatisticsQuery(
+            quantityType: exerciseType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum
+        ) { [weak self] _, statistics, _ in
+            guard let sum = statistics?.sumQuantity() else { return }
+            let minutes = sum.doubleValue(for: .minute())
+            Task { @MainActor [weak self] in
+                self?.exerciseMinutes = minutes
             }
         }
         

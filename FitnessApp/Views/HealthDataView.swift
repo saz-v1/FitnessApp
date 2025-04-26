@@ -45,13 +45,31 @@ struct HealthDataView: View {
                             color: .red
                         )
                         
-                        // Resting Energy Card
+                        // Sleep Card
                         HealthDataCard(
-                            title: "Resting Energy",
-                            value: String(format: "%.0f", healthKitManager.restingEnergy),
-                            subtitle: "kcal today",
+                            title: "Sleep",
+                            value: String(format: "%.1f", healthKitManager.sleepHours),
+                            subtitle: "hours",
                             icon: "bed.double.fill",
                             color: .blue
+                        )
+                        
+                        // Stand Hours Card
+                        HealthDataCard(
+                            title: "Stand Hours",
+                            value: String(format: "%.0f", healthKitManager.standHours),
+                            subtitle: "hours",
+                            icon: "figure.stand",
+                            color: .purple
+                        )
+                        
+                        // Exercise Minutes Card
+                        HealthDataCard(
+                            title: "Exercise",
+                            value: String(format: "%.0f", healthKitManager.exerciseMinutes),
+                            subtitle: "minutes",
+                            icon: "figure.run",
+                            color: .green
                         )
                     }
                     .padding(.horizontal)
