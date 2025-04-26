@@ -15,16 +15,21 @@ class HealthKitManager: ObservableObject {
     
     static let shared = HealthKitManager()
     
-    private let requiredTypes: Set<HKSampleType> = [
+    // Types that can be both read and written
+    private let readWriteTypes: Set<HKSampleType> = [
         HKObjectType.quantityType(forIdentifier: .bodyMass)!,
         HKObjectType.quantityType(forIdentifier: .height)!,
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-        HKObjectType.quantityType(forIdentifier: .appleStandTime)!,
-        HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
         HKObjectType.workoutType()
+    ]
+    
+    // Types that can only be read
+    private let readOnlyTypes: Set<HKSampleType> = [
+        HKObjectType.quantityType(forIdentifier: .appleStandTime)!,
+        HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!
     ]
     
     func requestAuthorization() async throws {
@@ -33,7 +38,12 @@ class HealthKitManager: ObservableObject {
             return
         }
         
-        try await healthStore.requestAuthorization(toShare: requiredTypes, read: requiredTypes)
+        // Request read/write access for readWriteTypes
+        try await healthStore.requestAuthorization(toShare: readWriteTypes, read: readWriteTypes)
+        
+        // Request read-only access for readOnlyTypes
+        try await healthStore.requestAuthorization(toShare: [], read: readOnlyTypes)
+        
         isAuthorized = true
     }
     
