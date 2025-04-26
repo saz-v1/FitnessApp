@@ -22,7 +22,7 @@ class HealthKitManager: ObservableObject {
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
         HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
-        HKObjectType.quantityType(forIdentifier: .appleStandHour)!,
+        HKObjectType.quantityType(forIdentifier: .appleStandTime)!,
         HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
         HKObjectType.workoutType()
     ]
@@ -285,7 +285,7 @@ class HealthKitManager: ObservableObject {
     }
     
     private func fetchStandHours() async {
-        guard let standType = HKQuantityType.quantityType(forIdentifier: .appleStandHour) else { return }
+        guard let standType = HKQuantityType.quantityType(forIdentifier: .appleStandTime) else { return }
         
         let predicate = createTodayPredicate()
         
