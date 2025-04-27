@@ -21,9 +21,9 @@ class ClaudeService: ObservableObject {
     
     /// Private initializer to enforce singleton pattern
     private init() {
-        // Set API key directly - in production, use secure storage instead
-        self.apiKey = "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"
-        print("API Key loaded successfully")
+        // Read API key from Config
+        self.apiKey = Config.apiKey
+        print("API Key loaded successfully from Config")
     }
     
     /// Saves API key to keychain

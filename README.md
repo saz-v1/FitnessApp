@@ -119,6 +119,21 @@ Features:
 - Smart goal suggestions
 - Progress analysis and insights
 
+## API Key Configuration
+
+The app uses an API key for certain features. To set up the API key:
+
+1. Create a `Config.swift` file in the root directory
+2. Add your API key to the `Config.swift` file:
+```swift
+import Foundation
+
+struct Config {
+    static let apiKey = "YOUR_API_KEY_HERE"
+}
+```
+3. The `Config.swift` file is already added to `.gitignore` to prevent it from being committed to version control
+
 ## Technical Architecture
 
 ### Directory Structure
