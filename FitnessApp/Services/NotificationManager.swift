@@ -110,6 +110,8 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Clear the badge count when notification is received
+        UIApplication.shared.applicationIconBadgeNumber = 0
         completionHandler()
     }
 } 
