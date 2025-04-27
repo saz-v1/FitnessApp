@@ -114,25 +114,29 @@ Features:
 - `Services/ClaudeService.swift`: AI-powered fitness recommendations and insights
 
 Features:
-- AI-powered workout recommendations
+- AI-powered workout recommendations using Claude Haiku 3 API
 - Personalized fitness advice
 - Smart goal suggestions
 - Progress analysis and insights
+- Natural language processing for user input
+- Contextual understanding of fitness goals
 
 ## API Key Configuration
 
 The app uses an API key for certain features. To set up the API key:
 
 1. Create a `Config.swift` file in the root directory
-2. Add your API key to the `Config.swift` file:
+2. Add your Claude API key to the `Config.swift` file:
 ```swift
 import Foundation
 
 struct Config {
-    static let apiKey = "YOUR_API_KEY_HERE"
+    static let apiKey = "YOUR_CLAUDE_API_KEY_HERE"
 }
 ```
 3. The `Config.swift` file is already added to `.gitignore` to prevent it from being committed to version control
+
+Note: The app uses the Claude Haiku 3 API for AI-powered features. Make sure to obtain a valid API key from Anthropic's developer portal.
 
 ## Technical Architecture
 
