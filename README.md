@@ -219,7 +219,6 @@ FitnessApp/
 - Privacy-focused implementation
 - Secure API communications
 
-
 ## Development Guidelines
 
 ### Code Style
@@ -262,46 +261,61 @@ The app follows SOLID principles to ensure maintainable and scalable code:
    - Classes are open for extension but closed for modification
    - Example: `Achievement` system allows adding new achievements without modifying existing code
    ```swift
-   enum Achievement.Category: CaseIterable {
-       case weight, calories, consistency, milestones
-       // New categories can be added without changing existing code
+   enum Achievement.Category: String, Codable {
+       case weight = "Weight"
+       case calories = "Calories"
+       case consistency = "Consistency"
+       case milestones = "Milestones"
    }
    ```
 
 3. **Liskov Substitution Principle (LSP)**
    - Subtypes can be used in place of their parent types
-   - Example: Different workout types can be used interchangeably
+   - Example: Different workout types can be used interchangeably in the workout history
    ```swift
-   protocol WorkoutType {
-       var duration: TimeInterval { get }
-       var intensity: Intensity { get }
+   struct WorkoutRecord: Identifiable, Codable, Equatable {
+       let type: WorkoutType
+       let duration: TimeInterval
+       let intensity: Intensity
+       
+       enum WorkoutType: String, Codable, CaseIterable, Identifiable {
+           case cardio = "Cardio"
+           case strength = "Strength"
+           case flexibility = "Flexibility"
+           case hiit = "HIIT"
+           case yoga = "Yoga"
+           case other = "Other"
+       }
    }
-   struct RunningWorkout: WorkoutType { /* ... */ }
-   struct CyclingWorkout: WorkoutType { /* ... */ }
    ```
 
 4. **Interface Segregation Principle (ISP)**
    - Clients only depend on interfaces they use
    - Example: `HealthKitManager` provides specific interfaces for different health data types
    ```swift
-   class HealthKitManager {
+   class HealthKitManager: ObservableObject {
        func fetchSteps() async throws -> Int
        func fetchActiveEnergy() async throws -> Double
+       func fetchHeartRate() async throws -> Double
        // Each method is specific to its use case
    }
    ```
 
 5. **Dependency Inversion Principle (DIP)**
    - High-level modules don't depend on low-level modules
-   - Example: `UserManager` uses protocols for data storage
+   - Example: `WorkoutAnalyticsService` depends on `ClaudeService` through dependency injection
    ```swift
-   protocol UserDataStorage {
-       func saveUser(_ user: User)
-       func loadUser() -> User?
-   }
-   class UserManager {
-       private let storage: UserDataStorage
-       // Depends on abstraction, not concrete implementation
+   class WorkoutAnalyticsService: ObservableObject {
+       private let claudeService: ClaudeService
+       
+       init(claudeService: ClaudeService = .shared) {
+           self.claudeService = claudeService
+       }
+       
+       func getWorkoutInsights(for user: User) async throws -> String {
+           // Uses ClaudeService for AI-powered insights
+           return try await claudeService.makeRequest(prompt: prompt)
+       }
    }
    ```
 
@@ -319,21 +333,14 @@ The app avoids code duplication through:
    }
    ```
 
-2. **Shared Utilities**
-   - Common functionality is centralized
+2. **Shared Models**
+   - Common data structures are reused
    ```swift
-   extension Date {
-       func formattedDate() -> String {
-           // Used throughout the app for consistent date formatting
-       }
-   }
-   ```
-
-3. **Base Classes**
-   - Common functionality is inherited
-   ```swift
-   class BaseWorkoutRecord {
-       // Shared properties and methods for all workout types
+   struct WeightRecord: Codable, Identifiable, Equatable {
+       let id: UUID
+       let date: Date
+       let weight: Double
+       // Used for both local and HealthKit weight tracking
    }
    ```
 
@@ -350,18 +357,14 @@ The app maintains simplicity through:
 2. **Straightforward Logic**
    - Simple, readable code structures
    ```swift
-   if userManager.calculateBMI() < 18.5 {
-       return "Underweight"
-   } else if userManager.calculateBMI() < 25 {
-       return "Normal"
-   }
-   ```
-
-3. **Focused Functions**
-   - Each function does one thing well
-   ```swift
-   func saveUser() {
-       // Simple, focused function for saving user data
+   func getBMICategory() -> BMICategory {
+       let bmi = calculateBMI()
+       switch bmi {
+       case ..<18.5: return .underweight
+       case 18.5..<25: return .normal
+       case 25..<30: return .overweight
+       default: return .obese
+       }
    }
    ```
 
