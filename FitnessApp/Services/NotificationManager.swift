@@ -12,7 +12,7 @@ class NotificationManager: NSObject, ObservableObject {
     
     /// Request permission to send notifications
     func requestAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             DispatchQueue.main.async {
                 if granted {
                     UNUserNotificationCenter.current().delegate = self
