@@ -219,11 +219,6 @@ FitnessApp/
 - Privacy-focused implementation
 - Secure API communications
 
-### Testing
-- Unit tests for business logic
-- UI tests for critical user flows
-- Performance testing
-- Accessibility testing
 
 ## Development Guidelines
 
@@ -240,18 +235,135 @@ FitnessApp/
 - Proper error handling
 - Memory management
 
-### Accessibility
-- VoiceOver support
-- Dynamic Type
-- Proper contrast ratios
-- Accessibility labels
-- Semantic meaning
-
 ### Internationalization
 - Localized strings
 - RTL support
 - Date and number formatting
 - Unit conversion
+
+## Development Principles
+
+### SOLID Principles
+The app follows SOLID principles to ensure maintainable and scalable code:
+
+1. **Single Responsibility Principle (SRP)**
+   - Each class has one specific responsibility
+   - Example: `NotificationManager` handles only notification-related tasks
+   ```swift
+   class NotificationManager: NSObject, ObservableObject {
+       // Only handles notification scheduling, permissions, and management
+       func scheduleNotification(title: String, body: String, trigger: UNNotificationTrigger, identifier: String)
+       func requestAuthorization()
+       func removeAllNotifications()
+   }
+   ```
+
+2. **Open/Closed Principle (OCP)**
+   - Classes are open for extension but closed for modification
+   - Example: `Achievement` system allows adding new achievements without modifying existing code
+   ```swift
+   enum Achievement.Category: CaseIterable {
+       case weight, calories, consistency, milestones
+       // New categories can be added without changing existing code
+   }
+   ```
+
+3. **Liskov Substitution Principle (LSP)**
+   - Subtypes can be used in place of their parent types
+   - Example: Different workout types can be used interchangeably
+   ```swift
+   protocol WorkoutType {
+       var duration: TimeInterval { get }
+       var intensity: Intensity { get }
+   }
+   struct RunningWorkout: WorkoutType { /* ... */ }
+   struct CyclingWorkout: WorkoutType { /* ... */ }
+   ```
+
+4. **Interface Segregation Principle (ISP)**
+   - Clients only depend on interfaces they use
+   - Example: `HealthKitManager` provides specific interfaces for different health data types
+   ```swift
+   class HealthKitManager {
+       func fetchSteps() async throws -> Int
+       func fetchActiveEnergy() async throws -> Double
+       // Each method is specific to its use case
+   }
+   ```
+
+5. **Dependency Inversion Principle (DIP)**
+   - High-level modules don't depend on low-level modules
+   - Example: `UserManager` uses protocols for data storage
+   ```swift
+   protocol UserDataStorage {
+       func saveUser(_ user: User)
+       func loadUser() -> User?
+   }
+   class UserManager {
+       private let storage: UserDataStorage
+       // Depends on abstraction, not concrete implementation
+   }
+   ```
+
+### DRY (Don't Repeat Yourself)
+The app avoids code duplication through:
+
+1. **Reusable Components**
+   - Common UI elements are extracted into reusable views
+   ```swift
+   struct StatCard: View {
+       let title: String
+       let value: String
+       let icon: String
+       // Used across multiple views for consistent styling
+   }
+   ```
+
+2. **Shared Utilities**
+   - Common functionality is centralized
+   ```swift
+   extension Date {
+       func formattedDate() -> String {
+           // Used throughout the app for consistent date formatting
+       }
+   }
+   ```
+
+3. **Base Classes**
+   - Common functionality is inherited
+   ```swift
+   class BaseWorkoutRecord {
+       // Shared properties and methods for all workout types
+   }
+   ```
+
+### KISS (Keep It Simple, Stupid)
+The app maintains simplicity through:
+
+1. **Clear Naming**
+   - Descriptive variable and function names
+   ```swift
+   func calculateBMI() -> Double
+   func scheduleWorkoutReminder()
+   ```
+
+2. **Straightforward Logic**
+   - Simple, readable code structures
+   ```swift
+   if userManager.calculateBMI() < 18.5 {
+       return "Underweight"
+   } else if userManager.calculateBMI() < 25 {
+       return "Normal"
+   }
+   ```
+
+3. **Focused Functions**
+   - Each function does one thing well
+   ```swift
+   func saveUser() {
+       // Simple, focused function for saving user data
+   }
+   ```
 
 ## Future Enhancements
 
