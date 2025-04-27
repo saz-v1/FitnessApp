@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import UIKit
 
 /// Manages all notification-related functionality in the app
 class NotificationManager: NSObject, ObservableObject {
