@@ -382,6 +382,7 @@ The app maintains simplicity through:
 - Custom workout creation
 - Progress sharing
 - Community features
+- Macronutrient Tracking
 
 ### Technical Improvements
 - Enhanced offline support
