@@ -111,7 +111,7 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     }
     
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Clear the badge count using the new iOS 17 method
+        // Clear the badge count
         UNUserNotificationCenter.current().setBadgeCount(0) { error in
             if let error = error {
                 print("Error setting badge count: \(error.localizedDescription)")
