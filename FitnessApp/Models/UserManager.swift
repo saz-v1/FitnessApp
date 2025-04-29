@@ -148,6 +148,12 @@ class UserManager: ObservableObject {
         saveUser()
     }
     
+    /// Delete a specific calorie record from history
+    func deleteCalorieRecord(_ record: CalorieRecord) {
+        user.calorieHistory.removeAll { $0.id == record.id }
+        saveUser()
+    }
+    
     // MARK: - Unit Conversion
     /// Toggle between metric and imperial units
     func toggleUnits() {

@@ -94,7 +94,12 @@ struct CalorieDetailView: View {
                             .padding()
                     } else {
                         ForEach(todaysMeals) { meal in
-                            MealRow(meal: meal)
+                            MealRow(
+                                meal: meal,
+                                onDelete: {
+                                    userManager.deleteCalorieRecord(meal)
+                                }
+                            )
                         }
                     }
                 }
@@ -110,6 +115,7 @@ struct CalorieDetailView: View {
 
 struct MealRow: View {
     let meal: CalorieRecord
+    var onDelete: (() -> Void)? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -119,6 +125,13 @@ struct MealRow: View {
                 Spacer()
                 Text(meal.date.formatted(date: .omitted, time: .shortened))
                     .foregroundColor(.secondary)
+                if let onDelete = onDelete {
+                    Button(role: .destructive, action: onDelete) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
             if let description = meal.description {
