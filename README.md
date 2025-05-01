@@ -202,7 +202,7 @@ FitnessApp/
 
 ### State Management
 - Uses SwiftUI's `@State`, `@StateObject`, and `@EnvironmentObject` for state management
-- Implements MVVM architecture pattern
+- Implements MVVM inspired architecture pattern
 - Proper separation of concerns between views and business logic
 
 ### Data Flow
@@ -236,12 +236,6 @@ FitnessApp/
 - KISS (Keep It Simple, Stupid)
 - Proper error handling
 - Memory management
-
-### Internationalization
-- Localized strings
-- RTL support
-- Date and number formatting
-- Unit conversion
 
 ## Development Principles
 
