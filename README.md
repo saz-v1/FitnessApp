@@ -384,7 +384,6 @@ The app maintains simplicity through:
 - Macronutrient Tracking
 
 ### Technical Improvements
-- Enhanced offline support
 - Improved data synchronization
 - Better analytics
 - More customization options
