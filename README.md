@@ -191,7 +191,6 @@ FitnessApp/
 - Consistent color scheme
 - Modern card-based design
 - Responsive layouts
-- Accessibility support
 
 ### Navigation
 - Tab-based navigation
