@@ -116,6 +116,7 @@ struct CalorieDetailView: View {
 struct MealRow: View {
     let meal: CalorieRecord
     var onDelete: (() -> Void)? = nil
+    @State private var showingDeleteConfirmation = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -126,11 +127,25 @@ struct MealRow: View {
                 Text(meal.date.formatted(date: .omitted, time: .shortened))
                     .foregroundColor(.secondary)
                 if let onDelete = onDelete {
-                    Button(role: .destructive, action: onDelete) {
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
                         Image(systemName: "trash")
                             .foregroundColor(.red)
                     }
                     .buttonStyle(.plain)
+                    .confirmationDialog(
+                        "Delete Meal",
+                        isPresented: $showingDeleteConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Delete", role: .destructive) {
+                            onDelete()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("Are you sure you want to delete this meal? This action cannot be undone.")
+                    }
                 }
             }
             
