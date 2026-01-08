@@ -2,9 +2,6 @@
 
 An IOS fitness tracking application built with SwiftUI that helps users track their workouts, weight, calories, and achieve their fitness goals.
 
-⚠️ **Notice:** This project is private and all rights are reserved. 
-Do not copy, redistribute, or use this code without permission.
-
 ## Features
 
 ### 1. Dashboard
