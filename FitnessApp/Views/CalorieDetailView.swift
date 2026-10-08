@@ -1,115 +1,49 @@
 import SwiftUI
-import Charts
 
 struct CalorieDetailView: View {
-    @EnvironmentObject var userManager: UserManager
-    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var userManager: UserManager
+    @Environment(\.dismiss) private var dismiss
     @State private var isAddingCalories = false
-    @StateObject private var claudeService = ClaudeService.shared
-    
-    var todaysMeals: [CalorieRecord] {
-        userManager.user.calorieHistory
-            .filter { Calendar.current.isDateInToday($0.date) }
-            .sorted(by: { $0.date > $1.date })
+    private var todaysMeals: [CalorieRecord] {
+        userManager.user.calorieHistory.filter { Calendar.current.isDateInToday($0.date) && $0.date <= Date() }
+            .sorted { $0.date > $1.date }
     }
-    
+    private var target: Double { userManager.calculateWeeklyCalorieTarget() ?? userManager.calculateDailyCalories() }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Daily Targets Section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Daily Targets")
-                        .font(.headline)
-                    
-                    HStack(alignment: .top, spacing: 20) {
-                        // Maintenance calories
-                        VStack(alignment: .leading) {
-                            Text("Maintenance")
-                                .font(.subheadline)
-                                .foregroundColor(.orange)
-                            Text("\(Int(userManager.calculateDailyCalories()))")
-                                .font(.title2)
-                                .bold()
-                            Text("kcal")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Goal-adjusted calories if available
-                        if let goalTarget = userManager.calculateWeeklyCalorieTarget() {
-                            VStack(alignment: .leading) {
-                                Text("Goal Target")
-                                    .font(.subheadline)
-                                    .foregroundColor(.red)
-                                Text("\(Int(goalTarget))")
-                                    .font(.title2)
-                                    .bold()
-                                Text("kcal")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+            VStack(alignment: .leading, spacing: 24) {
+                AppCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Label("Today's nourishment", systemImage: "leaf").font(.headline).foregroundStyle(AppTheme.accent)
+                        Text("\(Int(todaysMeals.reduce(0) { $0 + $1.calories })) kcal")
+                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        Text(target > 0 ? "Estimated daily target: \(Int(target)) kcal" : "Daily estimates are available for adults.")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                
-                // Add New Entry Button
-                Button(action: { isAddingCalories = true }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add Meal")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                
-                // Expanded Chart
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Calorie Trend")
-                        .font(.headline)
-                        .padding(.horizontal, 16)
-                    
-                    CalorieChartView(showAnnotations: true)
-                        .frame(height: 300)
-                        .padding(16)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                }
-                
-                // Today's Meals
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Today's Meals")
-                        .font(.headline)
-                        .padding(.horizontal, 16)
-                    
-                    if todaysMeals.isEmpty {
-                        Text("No meals logged today")
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding()
-                    } else {
-                        ForEach(todaysMeals) { meal in
-                            MealRow(
-                                meal: meal,
-                                onDelete: {
-                                    userManager.deleteCalorieRecord(meal)
-                                }
-                            )
-                        }
+                Button { isAddingCalories = true } label: { Label("Add Meal", systemImage: "plus") }
+                    .buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("add-meal")
+                AppCard {
+                    VStack(alignment: .leading, spacing: 18) {
+                        AppSectionTitle(title: "Calorie trend", subtitle: "Your daily calorie totals")
+                        CalorieChartView()
                     }
                 }
-            }
-            .padding(.vertical)
+                AppSectionTitle(title: "Today's meals", subtitle: "\(todaysMeals.count) entries")
+                if todaysMeals.isEmpty {
+                    AppEmptyState(title: "A fresh start",
+                        message: "Log your meals as you go. Add a calorie amount and an optional description.",
+                        icon: "fork.knife")
+                } else {
+                    ForEach(todaysMeals) { meal in
+                        MealRow(meal: meal, onDelete: { userManager.deleteCalorieRecord(meal) })
+                    }
+                }
+            }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .navigationTitle("Calories")
-        .sheet(isPresented: $isAddingCalories) {
-            AddCalorieSheet()
-        }
+        .navigationTitle("Meals & calories").navigationBarTitleDisplayMode(.inline).appScreen()
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .sheet(isPresented: $isAddingCalories) { AddCalorieSheet() }
     }
 }
 
@@ -117,73 +51,52 @@ struct MealRow: View {
     let meal: CalorieRecord
     var onDelete: (() -> Void)? = nil
     @State private var showingDeleteConfirmation = false
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(meal.mealType.rawValue)
-                    .font(.headline)
-                Spacer()
-                Text(meal.date.formatted(date: .omitted, time: .shortened))
-                    .foregroundColor(.secondary)
-                if let onDelete = onDelete {
-                    Button(role: .destructive) {
-                        showingDeleteConfirmation = true
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundColor(.red)
+        AppCard {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    IconBadge(icon: "fork.knife")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(meal.mealType.rawValue).font(.headline)
+                        Text(meal.date.formatted(date: .omitted, time: .shortened))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .confirmationDialog(
-                        "Delete Meal",
-                        isPresented: $showingDeleteConfirmation,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Delete", role: .destructive) {
-                            onDelete()
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text("Are you sure you want to delete this meal? This action cannot be undone.")
+                    Spacer(minLength: 0)
+                    if onDelete != nil {
+                        Button(role: .destructive) { showingDeleteConfirmation = true } label: {
+                            Image(systemName: "trash").frame(width: 44, height: 44)
+                        }.buttonStyle(.plain).accessibilityLabel("Delete \(meal.mealType.rawValue) entry")
                     }
                 }
-            }
-            
-            if let description = meal.description {
-                Text(description)
-                    .foregroundColor(.secondary)
-            }
-            
-            HStack {
-                Text("\(Int(meal.calories)) kcal")
-                    .font(.title3)
-                    .bold()
+                if let description = meal.description, !description.isEmpty {
+                    Text(description).font(.subheadline).foregroundStyle(.secondary)
+                }
+                Text("\(Int(meal.calories)) kcal").font(.title3.weight(.semibold)).monospacedDigit()
             }
         }
-        .padding(16)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
+        .alert("Delete this meal?", isPresented: $showingDeleteConfirmation) {
+            Button("Delete Meal", role: .destructive) { onDelete?() }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 }
 
 struct AddCalorieSheet: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var userManager: UserManager
-    @StateObject private var claudeService = ClaudeService.shared
     
     @State private var calories: Double = 0
     @State private var mealType: CalorieRecord.MealType = .breakfast
     @State private var description: String = ""
     @State private var date = Date()
-    @State private var isEstimating: Bool = false
     @State private var errorMessage: String?
-    @State private var estimatedCalories: Double?
+    @FocusState private var field: Field?
+    private enum Field { case description, calories }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section {
+                Section("Meal details") {
                     Picker("Meal", selection: $mealType) {
                         ForEach(CalorieRecord.MealType.allCases, id: \.self) { type in
                             Text(type.rawValue.capitalized).tag(type)
@@ -193,29 +106,17 @@ struct AddCalorieSheet: View {
                     DatePicker("Date", selection: $date, in: ...Date(), displayedComponents: [.date, .hourAndMinute])
                     
                     TextField("Description (e.g., '2 slices of pepperoni pizza')", text: $description, axis: .vertical)
-                        .lineLimit(3)
+                        .lineLimit(3...5).focused($field, equals: .description)
                     
                     HStack {
                         Text("Calories")
                         Spacer()
                         TextField("Amount", value: $calories, format: .number)
+                            .accessibilityIdentifier("meal-calories")
+                            .focused($field, equals: .calories)
                             .multilineTextAlignment(.trailing)
                             .keyboardType(.decimalPad)
                         Text("kcal")
-                    }
-                    
-                    if !description.isEmpty {
-                        Button(action: {
-                            Task {
-                                await estimateCalories()
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "wand.and.stars")
-                                Text("Estimate Calories")
-                            }
-                        }
-                        .disabled(isEstimating)
                     }
                     
                     if let error = errorMessage {
@@ -225,8 +126,10 @@ struct AddCalorieSheet: View {
                     }
                 }
             }
+            .appForm()
             .navigationTitle("Add Meal")
             .navigationBarTitleDisplayMode(.inline)
+            .appScreen()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -242,34 +145,19 @@ struct AddCalorieSheet: View {
                             description: description.isEmpty ? nil : description,
                             date: date
                         )
-                        userManager.user.calorieHistory.append(record)
-                        userManager.saveUser()
+                        guard userManager.updateUser({ $0.calorieHistory.append(record) }) else {
+                            errorMessage = userManager.persistenceError ?? "Your meal could not be saved."
+                            return
+                        }
                         dismiss()
                     }
+                    .disabled(!calories.isFinite || calories <= 0 || calories > 10000 || description.count > 2000)
                 }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { field = nil } }
             }
         }
     }
     
-    private func estimateCalories() async {
-        isEstimating = true
-        errorMessage = nil
-        
-        do {
-            let estimate = try await claudeService.estimateFoodCalories(foodDescription: description)
-            // The response should now be just a number
-            if let calorieNumber = Double(estimate.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                estimatedCalories = calorieNumber
-                calories = calorieNumber
-            } else {
-                errorMessage = "Could not parse calorie estimate"
-            }
-        } catch {
-            errorMessage = "Failed to get calorie estimate: \(error.localizedDescription)"
-        }
-        
-        isEstimating = false
-    }
 }
 
 #Preview {
@@ -277,4 +165,4 @@ struct AddCalorieSheet: View {
         CalorieDetailView()
             .environmentObject(UserManager())
     }
-} 
+}

@@ -24,6 +24,7 @@ struct Achievement: Identifiable, Codable {
 
 // MARK: - Achievement Manager
 /// Manages user achievements, progress tracking, and achievement unlocking
+@MainActor
 class AchievementManager: ObservableObject {
     @Published var achievements: [Achievement] = []
     @Published var totalPoints: Int = 0
@@ -48,6 +49,20 @@ class AchievementManager: ObservableObject {
     init(userManager: UserManager) {
         self.userManager = userManager
         loadAchievements()
+        var unlocked = userManager.user.unlockedAchievementIDs ?? []
+        if userManager.user.unlockedAchievementIDs == nil,
+           let data = UserDefaults.standard.data(forKey: "achievements"),
+           let saved = try? JSONDecoder().decode([Achievement].self, from: data) {
+            unlocked.formUnion(saved.filter(\.isUnlocked).map(\.id))
+            if userManager.updateUser({ $0.unlockedAchievementIDs = unlocked }) {
+                for key in ["achievements", "totalPoints", "currentStreak", "currentLevel"] { UserDefaults.standard.removeObject(forKey: key) }
+            }
+        }
+        for index in achievements.indices where unlocked.contains(achievements[index].id) {
+            achievements[index].isUnlocked = true
+            achievements[index].progress = 1
+        }
+        totalPoints = achievements.filter(\.isUnlocked).reduce(0) { $0 + $1.points }
         calculateLevel()
     }
     
@@ -141,8 +156,8 @@ class AchievementManager: ObservableObject {
             ),
             Achievement(
                 id: "calorie_goal_met",
-                title: "Calorie Master",
-                description: "Meet your calorie goal for 3 days in a row",
+                title: "Meal Tracking",
+                description: "Log meals for 3 consecutive days",
                 icon: "target",
                 points: 40,
                 category: .calories,
@@ -237,92 +252,64 @@ class AchievementManager: ObservableObject {
     // MARK: - Achievement Checking
     /// Checks and updates all achievements based on current user data
     func checkAchievements() {
+        let unlocked = userManager.user.unlockedAchievementIDs ?? []
+        for index in achievements.indices where unlocked.contains(achievements[index].id) {
+            achievements[index].isUnlocked = true
+            achievements[index].progress = 1
+        }
+        totalPoints = achievements.filter(\.isUnlocked).reduce(0) { $0 + $1.points }
+        calculateLevel()
         checkWeightAchievements()
         checkConsistencyAchievements()
         checkCalorieAchievements()
         checkWorkoutAchievements()
-        updateStreaks()
         saveAchievements()
     }
     
     /// Checks achievements related to weight tracking
     private func checkWeightAchievements() {
-        if !userManager.user.weightHistory.isEmpty {
+        if userManager.user.weightHistory.contains(where: { $0.date <= Date() }) {
             unlockAchievement(id: "first_weight_entry")
         }
         
         if let goalWeight = userManager.user.goalWeight,
-           abs(userManager.user.weight - goalWeight) < 0.5 {
+           abs(userManager.user.weight - goalWeight) * (userManager.user.usesMetric ? 1 : 0.45359237) < 0.5 {
             unlockAchievement(id: "weight_goal_reached")
         }
         
-        let calendar = Calendar.current
-        let today = Date()
-        let lastWeek = calendar.date(byAdding: .day, value: -7, to: today)!
-        
-        let weightEntriesLastWeek = userManager.user.weightHistory
-            .filter { $0.date >= lastWeek }
-            .count
-        
-        if weightEntriesLastWeek >= 7 {
-            unlockAchievement(id: "weight_consistency")
-        }
+        let streak = FitnessMetrics.streak(dates: userManager.user.weightHistory.map(\.date))
+        setProgress(id: "weight_consistency", value: Double(streak) / 7)
+        if streak >= 7 { unlockAchievement(id: "weight_consistency") }
     }
     
     /// Checks achievements related to consistency
     private func checkConsistencyAchievements() {
-        let calendar = Calendar.current
-        let today = Date()
-        
-        let activityDays = Set(
-            userManager.user.weightHistory.map { calendar.startOfDay(for: $0.date) } +
-            userManager.user.calorieHistory.map { calendar.startOfDay(for: $0.date) }
-        )
-        
-        var streak = 0
-        var currentDate = today
-        
-        while activityDays.contains(currentDate) {
-            streak += 1
-            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
-        }
-        
-        currentStreak = streak
-        
-        if streak >= 7 {
-            unlockAchievement(id: "one_week_streak")
-        }
-        if streak >= 30 {
-            unlockAchievement(id: "one_month_streak")
-        }
+        updateStreaks()
+        setProgress(id: "one_week_streak", value: Double(currentStreak) / 7)
+        setProgress(id: "one_month_streak", value: Double(currentStreak) / 30)
+        if currentStreak >= 7 { unlockAchievement(id: "one_week_streak") }
+        if currentStreak >= 30 { unlockAchievement(id: "one_month_streak") }
     }
     
     /// Checks achievements related to calorie tracking
     private func checkCalorieAchievements() {
-        if !userManager.user.calorieHistory.isEmpty {
-            unlockAchievement(id: "first_meal_logged")
-        }
+        if userManager.user.calorieHistory.contains(where: { $0.date <= Date() }) { unlockAchievement(id: "first_meal_logged") }
+        let streak = FitnessMetrics.streak(dates: userManager.user.calorieHistory.map(\.date))
+        setProgress(id: "calorie_goal_met", value: Double(streak) / 3)
+        if streak >= 3 { unlockAchievement(id: "calorie_goal_met") }
     }
-    
+
     /// Checks achievements related to workouts
     private func checkWorkoutAchievements() {
-        if !userManager.user.workoutHistory.isEmpty {
+        if userManager.user.workoutHistory.contains(where: { $0.date <= Date() }) {
             unlockAchievement(id: "first_workout")
             
             let calendar = Calendar.current
             let today = Date()
-            let workoutDates = Set(userManager.user.workoutHistory.map { 
-                calendar.startOfDay(for: $0.date)
-            })
-            
-            var workoutStreak = 0
-            var currentDate = today
-            
-            while workoutDates.contains(currentDate) {
-                workoutStreak += 1
-                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
-            }
-            
+            let workoutStreak = FitnessMetrics.streak(dates: userManager.user.workoutHistory.map(\.date))
+            setProgress(id: "workout_streak_3", value: Double(workoutStreak) / 3)
+            setProgress(id: "workout_streak_7", value: Double(workoutStreak) / 7)
+            setProgress(id: "workout_streak_30", value: Double(workoutStreak) / 30)
             if workoutStreak >= 3 {
                 unlockAchievement(id: "workout_streak_3")
             }
@@ -333,11 +320,12 @@ class AchievementManager: ObservableObject {
                 unlockAchievement(id: "workout_streak_30")
             }
             
-            let weekStart = calendar.date(byAdding: .day, value: -7, to: today)!
+            let weekStart = calendar.dateInterval(of: .weekOfYear, for: today)?.start ?? calendar.startOfDay(for: today)
             let workoutsThisWeek = userManager.user.workoutHistory
-                .filter { $0.date >= weekStart }
+                .filter { $0.date >= weekStart && $0.date <= today }
                 .count
             
+            setProgress(id: "weekly_workout_goal", value: Double(workoutsThisWeek) / 3)
             if workoutsThisWeek >= 3 {
                 unlockAchievement(id: "weekly_workout_goal")
             }
@@ -360,33 +348,19 @@ class AchievementManager: ObservableObject {
     
     /// Updates user streaks based on activity
     private func updateStreaks() {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        
-        let activityDays = Set(
-            userManager.user.weightHistory.map { calendar.startOfDay(for: $0.date) } +
-            userManager.user.calorieHistory.map { calendar.startOfDay(for: $0.date) }
-        )
-        
-        var streak = 0
-        var currentDate = today
-        
-        while activityDays.contains(currentDate) {
-            streak += 1
-            currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
-        }
-        
-        currentStreak = streak
+        currentStreak = FitnessMetrics.streak(dates: userManager.user.weightHistory.map(\.date) +
+            userManager.user.calorieHistory.map(\.date) + userManager.user.workoutHistory.map(\.date))
     }
-    
-    // MARK: - Data Persistence
-    /// Saves achievements and related data to UserDefaults
+
+    private func setProgress(id: String, value: Double) {
+        guard let index = achievements.firstIndex(where: { $0.id == id }), !achievements[index].isUnlocked else { return }
+        achievements[index].progress = max(0, min(1, value))
+    }
+
     private func saveAchievements() {
-        if let encoded = try? JSONEncoder().encode(achievements) {
-            UserDefaults.standard.set(encoded, forKey: "achievements")
+        let ids = Set(achievements.filter(\.isUnlocked).map(\.id))
+        if ids != (userManager.user.unlockedAchievementIDs ?? []) {
+            userManager.updateUser { $0.unlockedAchievementIDs = ids }
         }
-        UserDefaults.standard.set(totalPoints, forKey: "totalPoints")
-        UserDefaults.standard.set(currentStreak, forKey: "currentStreak")
-        UserDefaults.standard.set(currentLevel, forKey: "currentLevel")
     }
-} 
+}

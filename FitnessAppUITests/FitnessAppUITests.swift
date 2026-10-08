@@ -1,43 +1,86 @@
-//
-//  FitnessAppUITests.swift
-//  FitnessAppUITests
-//
-//  Created by Ahtisham Zaheer on 24/01/2025.
-//
-
 import XCTest
 
 final class FitnessAppUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
-        continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
+    override func setUpWithError() throws { continueAfterFailure = false }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    private func launch() -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
+        return app
     }
 
     @MainActor
-    func testLaunchPerformance() throws {
-        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            // This measures how long it takes to launch your application.
-            measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
-            }
-        }
+    func testLaunchDoesNotRequireHealthPermission() {
+        let app = launch()
+        XCTAssertTrue(app.tabBars.buttons["Profile"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.alerts.count == 0)
+    }
+
+    @MainActor
+    func testManualMealRejectsZeroCaloriesAndCanBeCancelled() {
+        let app = launch()
+        app.buttons["dashboard-calories"].tap()
+        app.buttons["add-meal"].tap()
+        XCTAssertTrue(app.textFields["meal-calories"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars.buttons["Save"].isEnabled)
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertFalse(app.textFields["meal-calories"].exists)
+    }
+
+    @MainActor
+    func testProfileChangesSaveExplicitly() {
+        let app = launch()
+        app.tabBars.buttons["Profile"].tap()
+        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["Profile saved."].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testProfileUnitLabelsFollowUnsavedSelection() {
+        let app = launch()
+        app.tabBars.buttons["Profile"].tap()
+        let imperial = app.segmentedControls.buttons["Imperial"]
+        XCTAssertTrue(imperial.waitForExistence(timeout: 5))
+        imperial.tap()
+        XCTAssertEqual(app.staticTexts["profile-height-unit"].label, "in")
+        XCTAssertEqual(app.staticTexts["profile-weight-unit"].label, "lbs")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(app.staticTexts["Profile saved."].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["profile-weight-unit"].label, "lbs")
+    }
+
+    @MainActor
+    func testWorkoutCanBeLoggedAndDeletionRequiresConfirmation() {
+        let app = launch()
+        app.tabBars.buttons["Workouts"].tap()
+        app.buttons["add-workout"].tap()
+        XCTAssertTrue(app.buttons["save-workout"].waitForExistence(timeout: 5))
+        app.buttons["save-workout"].tap()
+        XCTAssertTrue(app.navigationBars.buttons["Edit"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Edit"].tap()
+        app.buttons["Delete Cardio workout"].tap()
+        XCTAssertTrue(app.buttons["Delete Workout"].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["Delete Cardio workout"].exists)
+        app.buttons["Delete Cardio workout"].tap()
+        app.buttons["Delete Workout"].tap()
+        XCTAssertTrue(app.staticTexts["Your next chapter starts here"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testChartTimeRangesShowCalendarDayCoverage() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--chart-fixtures"]
+        app.launch()
+        app.buttons["dashboard-calories"].tap()
+        let range = app.segmentedControls["chart-period"]
+        XCTAssertTrue(range.waitForExistence(timeout: 5))
+        range.buttons["7 days"].tap()
+        XCTAssertTrue(app.staticTexts["7 / 7"].waitForExistence(timeout: 5))
+        range.buttons["90 days"].tap()
+        XCTAssertTrue(app.staticTexts["90 / 90"].waitForExistence(timeout: 5))
     }
 }

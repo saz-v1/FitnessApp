@@ -1,300 +1,175 @@
 import SwiftUI
-import Charts
 
 struct DashboardView: View {
-    @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject private var userManager: UserManager
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingBMIDetail = false
     @State private var showingCalorieDetail = false
     @State private var showingWeightDetail = false
-    
+    @State private var showingAddMeal = false
+    @State private var showingAddWeight = false
+
     var body: some View {
-        NavigationView {
+        let now = Date()
+        let calories = FitnessMetrics.calorieSummary(records: userManager.user.calorieHistory, days: 7, now: now)
+        let todaysCalories = calories.days.last?.calories ?? 0
+        let dailyGoal = userManager.calculateWeeklyCalorieTarget() ?? userManager.calculateDailyCalories()
+        NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Health Data Summary
-                    NavigationLink {
-                        HealthDataView()
-                    } label: {
-                        HealthDataSummaryCard()
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                            .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.accent)
+                        Text("A little progress, every day.").font(.title2.weight(.semibold))
                     }
-                    .buttonStyle(.plain)
-                    
-                    // Stats Cards
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 16) {
-                        // BMI Card
-                        StatCard(
-                            title: "BMI",
-                            value: String(format: "%.1f", userManager.calculateBMI()),
-                            icon: "figure.arms.open"
-                        ) {
-                            showingBMIDetail = true
-                        }
-                        
-                        // Today's Calories Card
-                        Button(action: { showingCalorieDetail = true }) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Image(systemName: "flame.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.green)
-                                    Text("Today's Calories")
-                                        .font(.headline)
-                                }
-                                
-                                // Today's intake and progress
-                                VStack(alignment: .leading, spacing: 8) {
-                                    let todayCalories = userManager.user.calorieHistory
-                                        .filter { Calendar.current.isDateInToday($0.date) }
-                                        .reduce(0) { $0 + $1.calories }
-                                    
-                                    let dailyGoal = userManager.calculateDailyCalories()
-                                    let progress = min(todayCalories / dailyGoal, 1.0)
-                                    let remaining = max(dailyGoal - todayCalories, 0)
-                                    
-                                    // Progress bar
-                                    GeometryReader { geometry in
-                                        ZStack(alignment: .leading) {
-                                            Rectangle()
-                                                .fill(Color(.systemGray5))
-                                                .frame(height: 8)
-                                                .cornerRadius(4)
-                                            
-                                            Rectangle()
-                                                .fill(progress > 1.0 ? .orange : .green)
-                                                .frame(width: geometry.size.width * progress, height: 8)
-                                                .cornerRadius(4)
-                                        }
-                                    }
-                                    .frame(height: 8)
-                                    
-                                    // Calorie numbers
-                                    HStack(alignment: .bottom, spacing: 4) {
-                                        Text("\(Int(todayCalories))")
-                                            .font(.title2)
-                                            .bold()
-                                        Text("/ \(Int(dailyGoal))")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                        Text("kcal")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    // Remaining calories
-                                    Text("\(Int(remaining)) kcal remaining")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: 120)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
+                    calorieOverview(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                    quickActions
+                    NavigationLink { HealthDataView() } label: { HealthDataSummaryCard() }
                         .buttonStyle(.plain)
-                        
-                        // Weight Summary Card
-                        Button(action: { showingWeightDetail = true }) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "scalemass.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.green)
-                                    Text("Weight")
-                                        .font(.headline)
-                                }
-                                
-                                HStack(alignment: .bottom, spacing: 4) {
-                                    Text(String(format: "%.1f", userManager.user.weight))
-                                        .font(.title2)
-                                        .bold()
-                                    Text(userManager.user.usesMetric ? "kg" : "lbs")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                if let goalWeight = userManager.user.goalWeight {
-                                    WeightGoalView(currentWeight: userManager.user.weight, goalWeight: goalWeight, usesMetric: userManager.user.usesMetric)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: 120)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
-                        .buttonStyle(.plain)
-                        
-                        // Calorie Summary Card
-                        Button(action: { showingCalorieDetail = true }) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "chart.bar.fill")
-                                        .font(.title2)
-                                        .foregroundColor(.green)
-                                    Text("Weekly Summary")
-                                        .font(.headline)
-                                }
-                                
-                                // Weekly average and total
-                                let calendar = Calendar.current
-                                let today = Date()
-                                let weekStart = calendar.date(byAdding: .day, value: -6, to: today)!
-                                
-                                let weeklyRecords = userManager.user.calorieHistory
-                                    .filter { record in
-                                        record.date >= weekStart && record.date <= today
-                                    }
-                                
-                                let weeklyTotal = weeklyRecords.reduce(0) { $0 + $1.calories }
-                                let weeklyAverage = weeklyTotal / max(Double(weeklyRecords.count), 1)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack(alignment: .bottom, spacing: 4) {
-                                        Text(String(format: "%.0f", weeklyAverage))
-                                            .font(.title2)
-                                            .bold()
-                                        Text("avg kcal/day")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    Text("\(weeklyRecords.count) days tracked")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    
-                                    if let goalTarget = userManager.calculateWeeklyCalorieTarget() {
-                                        let difference = weeklyAverage - goalTarget
-                                        Text(difference > 0 ? "Above goal by" : "Below goal by")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        + Text(" \(Int(abs(difference))) kcal")
-                                            .font(.caption)
-                                            .bold()
-                                    }
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .frame(height: 120)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
-                        .buttonStyle(.plain)
+                    AppSectionTitle(title: "Your overview", subtitle: "See how your habits are taking shape.")
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12),
+                        count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 12) {
+                        overviewCard(title: "Weight", value: userManager.user.weight.formatted(.number.precision(.fractionLength(1))),
+                            detail: userManager.weightUnit, icon: "scalemass", action: { showingWeightDetail = true })
+                        overviewCard(title: "BMI", value: userManager.getBMICategory() == .unavailable ? "—" :
+                            userManager.calculateBMI().formatted(.number.precision(.fractionLength(1))),
+                            detail: "Adult estimate", icon: "figure.arms.open", action: { showingBMIDetail = true })
                     }
-                    .padding(.horizontal)
-                    
-                    // Achievements Summary
+                    weeklySummary(calories: calories)
                     AchievementSummaryCard(userManager: userManager)
-                        .padding(.horizontal)
-                }
-                .padding(.vertical)
+                }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .navigationTitle("Dashboard")
-            .sheet(isPresented: $showingBMIDetail) {
-                NavigationView {
-                    BMIDetailView()
-                }
-            }
-            .sheet(isPresented: $showingCalorieDetail) {
-                NavigationView {
-                    CalorieDetailView()
-                }
-            }
-            .sheet(isPresented: $showingWeightDetail) {
-                NavigationView {
-                    WeightDetailView()
-                }
-            }
+            .appScreen()
+            .sheet(isPresented: $showingBMIDetail) { NavigationStack { BMIDetailView() } }
+            .sheet(isPresented: $showingCalorieDetail) { NavigationStack { CalorieDetailView() } }
+            .sheet(isPresented: $showingWeightDetail) { NavigationStack { WeightDetailView() } }
+            .sheet(isPresented: $showingAddMeal) { AddCalorieSheet() }
+            .sheet(isPresented: $showingAddWeight) { AddWeightSheet() }
         }
     }
-}
 
-struct StatCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.title)
-                    .foregroundColor(.green)
-                
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text(value)
-                    .font(.title2)
-                    .bold()
+    private func calorieOverview(todaysCalories: Double, dailyGoal: Double) -> some View {
+        Button { showingCalorieDetail = true } label: {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack {
+                    Label("Today's Calories", systemImage: "flame.fill").font(.headline)
+                    Spacer()
+                    Image(systemName: "arrow.up.right").accessibilityHidden(true)
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 24) {
+                        calorieNumbers(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                        Spacer(minLength: 0)
+                        calorieRing(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                    }
+                    VStack(alignment: .leading, spacing: 20) {
+                        calorieNumbers(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                        calorieRing(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                    }
+                }
+                Text(dailyGoal > 0 ? "\(Int(max(0, dailyGoal - todaysCalories))) kcal remaining · estimated target" :
+                    "Log meals to build your daily picture.")
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.8))
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 120)
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .padding(24).frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(.white)
+            .background(AppTheme.hero, in: RoundedRectangle(cornerRadius: 28))
+        }
+        .buttonStyle(.plain).accessibilityIdentifier("dashboard-calories")
+    }
+
+    private func calorieNumbers(todaysCalories: Double, dailyGoal: Double) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(todaysCalories.formatted(.number.precision(.fractionLength(0))))
+                .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
+            Text(dailyGoal > 0 ? "of \(Int(dailyGoal)) kcal" : "kcal logged")
+                .font(.subheadline).foregroundStyle(.white.opacity(0.8))
+        }
+    }
+    private func calorieRing(todaysCalories: Double, dailyGoal: Double) -> some View {
+        let progress = dailyGoal > 0 ? min(max(todaysCalories / dailyGoal, 0), 1) : 0
+        return ZStack {
+            Circle().stroke(.white.opacity(0.15), lineWidth: 9)
+            Circle().trim(from: 0, to: progress).stroke(Color(red: 0.76, green: 0.94, blue: 0.60),
+                style: StrokeStyle(lineWidth: 9, lineCap: .round)).rotationEffect(.degrees(-90))
+            Image(systemName: "leaf.fill").font(.title).foregroundStyle(.white.opacity(0.9))
+        }.frame(width: 86, height: 86).accessibilityHidden(true)
+    }
+
+    private var quickActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { mealButton; weightButton }
+            VStack(spacing: 12) { mealButton; weightButton }
+        }
+    }
+    private var mealButton: some View {
+        Button { showingAddMeal = true } label: { Label("Log a meal", systemImage: "plus") }
+            .buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("quick-add-meal")
+    }
+    private var weightButton: some View {
+        Button { showingAddWeight = true } label: {
+            Label("Log weight", systemImage: "scalemass")
+        }.buttonStyle(AppSecondaryButtonStyle()).accessibilityIdentifier("quick-add-weight")
+    }
+
+    private func overviewCard(title: String, value: String, detail: String, icon: String,
+        action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            AppCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack { IconBadge(icon: icon); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary) }
+                    Text(title).font(.subheadline).foregroundStyle(.secondary)
+                    Text(value).font(.system(.title, design: .rounded, weight: .bold)).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }.buttonStyle(.plain)
+    }
+
+    private func weeklySummary(calories: FitnessMetrics.CalorieSummary) -> some View {
+        AppCard {
+            VStack(alignment: .leading, spacing: 16) {
+                AppSectionTitle(title: "This week's nourishment")
+                HStack(alignment: .firstTextBaseline) {
+                    Text(calories.average.formatted(.number.precision(.fractionLength(0))))
+                        .font(.system(.title, design: .rounded, weight: .bold)).monospacedDigit()
+                    Text("kcal / day").font(.subheadline).foregroundStyle(.secondary)
+                }
+                Text("\(calories.loggedDays) of 7 days logged")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
         }
     }
 }
 
 struct HealthDataSummaryCard: View {
-    @StateObject private var healthKitManager = HealthKitManager.shared
-    
+    @AppStorage("healthIntegrationEnabled") private var enabled = false
+    @StateObject private var health = HealthKitManager.shared
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "heart.fill")
-                    .font(.title)
-                    .foregroundColor(.green)
-                
-                Text("Today's Activity")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            HStack(spacing: 16) {
-                // Steps
-                HStack(spacing: 4) {
-                    Image(systemName: "figure.walk")
-                        .foregroundColor(.green)
-                    Text("\(healthKitManager.steps)")
-                        .font(.title2)
-                        .bold()
-                    Text("steps")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+        AppCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    IconBadge(icon: "heart.fill")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(enabled ? "Today's activity" : "Connect Apple Health").font(.headline).foregroundStyle(.primary)
+                        Text(enabled ? "From the data you share" : "Steps, movement and sleep, in one place")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
                 }
-                
-                Spacer()
-                
-                // Calories
-                HStack(spacing: 4) {
-                    Image(systemName: "flame.fill")
-                        .foregroundColor(.green)
-                    Text(String(format: "%.0f", healthKitManager.activeEnergy))
-                        .font(.title2)
-                        .bold()
-                    Text("kcal")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                if enabled {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 24) { activityValues }
+                        VStack(alignment: .leading, spacing: 12) { activityValues }
+                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
-        .task {
-            await healthKitManager.fetchTodaysHealthData()
-        }
+    }
+    @ViewBuilder private var activityValues: some View {
+        Label("\(health.steps.formatted()) steps", systemImage: "figure.walk")
+        Label("\(Int(health.activeEnergy)) active kcal", systemImage: "flame")
     }
 }
 
@@ -302,66 +177,37 @@ struct WeightGoalView: View {
     let currentWeight: Double
     let goalWeight: Double
     let usesMetric: Bool
-    
     var body: some View {
         let difference = goalWeight - currentWeight
-        VStack(alignment: .leading, spacing: 4) {
-            Text(difference > 0 ? "Need to gain" : "Need to lose")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("\(String(format: "%.1f", abs(difference))) \(usesMetric ? "kg" : "lbs")")
-                .font(.caption)
-                .bold()
-        }
+        Text(abs(difference) < 0.05 ? "At your goal" :
+            "\(String(format: "%.1f", abs(difference))) \(usesMetric ? "kg" : "lbs") to your goal")
+            .font(.subheadline).foregroundStyle(.secondary)
     }
 }
 
 struct AchievementSummaryCard: View {
-    let userManager: UserManager
+    @ObservedObject var userManager: UserManager
     @StateObject private var achievementManager: AchievementManager
-    
     init(userManager: UserManager) {
         self.userManager = userManager
         _achievementManager = StateObject(wrappedValue: AchievementManager(userManager: userManager))
     }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Achievements")
-                    .font(.headline)
-                
-                Spacer()
-                
-                NavigationLink(destination: AchievementsView(userManager: userManager)) {
-                    Text("View All")
-                        .font(.subheadline)
-                        .foregroundColor(.green)
-                }
-            }
-            
-            let unlockedAchievements = achievementManager.achievements.filter { $0.isUnlocked }
-            
-            if unlockedAchievements.isEmpty {
-                Text("No achievements unlocked yet. Keep going!")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(unlockedAchievements.prefix(3)) { achievement in
-                            AchievementCard(achievement: achievement)
-                                .frame(width: 120)
-                        }
+        NavigationLink { AchievementsView(userManager: userManager) } label: {
+            AppCard {
+                HStack(spacing: 16) {
+                    IconBadge(icon: "rosette", color: AppTheme.warm)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Small wins, big momentum").font(.headline).foregroundStyle(.primary)
+                        Text("\(achievementManager.achievements.filter(\.isUnlocked).count) achievements · \(achievementManager.totalPoints) points")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").foregroundStyle(.secondary).font(.caption)
                 }
             }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .onAppear {
-            achievementManager.checkAchievements()
-        }
+        }.buttonStyle(.plain)
+            .onAppear { achievementManager.checkAchievements() }
+            .onChange(of: userManager.user) { _, _ in achievementManager.checkAchievements() }
     }
-} 
+}

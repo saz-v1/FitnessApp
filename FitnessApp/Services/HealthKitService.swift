@@ -1,138 +1,72 @@
 import Foundation
 import HealthKit
+import Combine
 
-/// Service for interacting with Apple HealthKit
-class HealthKitService: ObservableObject {
-    /// Singleton instance for app-wide access
+@MainActor
+final class HealthKitService: ObservableObject {
     static let shared = HealthKitService()
-    
-    /// HealthKit store for accessing health data
     private let healthStore = HKHealthStore()
-    
-    /// Published properties for UI updates
-    @Published var isSyncing = false
-    @Published var lastSyncDate: Date?
-    @Published var syncError: String?
-    
-    /// Private initializer for singleton pattern
+    private let preference = HealthIntegrationPreference.shared
+    private var syncToken: UInt?
+    @Published private(set) var isSyncing = false
+    @Published private(set) var lastSyncDate: Date?
+    @Published private(set) var syncError: String?
     private init() {}
-    
-    /// Request authorization to access HealthKit data
-    func requestAuthorization() async throws {
-        // Check if HealthKit is available on this device
-        guard HKHealthStore.isHealthDataAvailable() else {
-            throw HealthKitError.notAvailable
-        }
-        
-        // Define the types of data we want to access
-        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
-        let typesToRead: Set<HKObjectType> = [weightType]
-        let typesToWrite: Set<HKSampleType> = [weightType]
-        
-        // Request authorization from the user
-        try await healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead)
-    }
-    
-    /// Sync weight data with HealthKit
+
     func syncWithHealthKit() async {
-        // Prevent multiple sync operations from running simultaneously
-        guard !isSyncing else { return }
-        
-        // Update UI on main thread
-        await MainActor.run {
-            isSyncing = true
-            syncError = nil
+        guard let token = try? preference.accessToken(), syncToken == nil else { return }
+        syncToken = token
+        isSyncing = true
+        syncError = nil
+        defer {
+            if syncToken == token { syncToken = nil; isSyncing = false }
         }
-        
         do {
-            // Request authorization and fetch weight history
-            try await requestAuthorization()
-            try await fetchWeightHistory()
-            
-            // Update last sync date on main thread
-            await MainActor.run {
-                lastSyncDate = Date()
+            guard HKHealthStore.isHealthDataAvailable(), let type = HKObjectType.quantityType(forIdentifier: .bodyMass) else { throw HealthKitError.notAvailable }
+            try await healthStore.requestAuthorization(toShare: [], read: [type])
+            try preference.validate(token)
+            let now = Date()
+            let start = Calendar.current.date(byAdding: .year, value: -1, to: now) ?? now.addingTimeInterval(-31536000)
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: now, options: .strictStartDate)
+            let samples: [HKQuantitySample] = try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
+                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, error in
+                    if let error { continuation.resume(throwing: error) }
+                    else { continuation.resume(returning: (samples ?? []).compactMap { $0 as? HKQuantitySample }) }
+                }
+                healthStore.execute(query)
             }
+            try preference.validate(token)
+            let records = samples.compactMap { sample -> WeightRecord? in
+                let kilograms = sample.quantity.doubleValue(for: .gramUnit(with: .kilo))
+                guard kilograms.isFinite, (1...700).contains(kilograms), sample.startDate <= now else { return nil }
+                return WeightRecord(id: sample.uuid, weight: kilograms, date: sample.startDate)
+            }
+            guard UserManager.shared.syncWeights(records) else { throw HealthKitError.saveFailed }
+            lastSyncDate = now
+        } catch is CancellationError { return
         } catch {
-            // Handle errors on main thread
-            await MainActor.run {
-                syncError = error.localizedDescription
-            }
-        }
-        
-        // Reset syncing state on main thread
-        await MainActor.run {
-            isSyncing = false
+            guard (try? preference.validate(token)) != nil else { return }
+            syncError = "Apple Health records could not be synced. Unlock your device and try again."
         }
     }
-    
-    /// Fetch weight history from HealthKit
-    private func fetchWeightHistory() async throws {
-        // Check if HealthKit is available
-        guard HKHealthStore.isHealthDataAvailable() else {
-            throw HealthKitError.notAvailable
-        }
-        
-        // Set up query parameters
-        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
-        let predicate = HKQuery.predicateForSamples(withStart: Calendar.current.date(byAdding: .year, value: -1, to: Date()), end: Date(), options: .strictStartDate)
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
-        
-        // Execute query with continuation
-        return try await withCheckedThrowingContinuation { continuation in
-            let query = HKSampleQuery(sampleType: weightType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { (query, samples, error) in
-                // Handle query errors
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                // Ensure samples are of the correct type
-                guard let samples = samples as? [HKQuantitySample] else {
-                    continuation.resume(throwing: HealthKitError.fetchFailed)
-                    return
-                }
-                
-                // Convert HealthKit samples to app's WeightRecord model
-                let weightRecords = samples.map { sample in
-                    let weightInKg = sample.quantity.doubleValue(for: HKUnit.gramUnit(with: .kilo))
-                    return WeightRecord(weight: weightInKg, date: sample.startDate)
-                }
-                
-                // Update user data on main thread
-                Task { @MainActor in
-                    UserManager.shared.user.weightHistory = weightRecords
-                    UserManager.shared.saveUser()
-                    continuation.resume()
-                }
-            }
-            
-            // Execute the query
-            healthStore.execute(query)
-        }
-    }
-    
-    /// Save a weight measurement to HealthKit
-    func saveWeight(_ weight: Double, date: Date) async throws {
-        // Check if HealthKit is available
-        guard HKHealthStore.isHealthDataAvailable() else {
-            throw HealthKitError.notAvailable
-        }
-        
-        // Create a HealthKit sample
-        let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass)!
-        let weightQuantity = HKQuantity(unit: HKUnit.gramUnit(with: .kilo), doubleValue: weight)
-        let sample = HKQuantitySample(type: weightType, quantity: weightQuantity, start: date, end: date)
-        
-        // Save the sample to HealthKit
-        try await healthStore.save(sample)
+
+    func disconnect() {
+        preference.invalidate()
+        syncToken = nil
+        isSyncing = false
+        lastSyncDate = nil
+        syncError = nil
     }
 }
 
-/// Errors that can occur during HealthKit operations
-enum HealthKitError: Error {
-    case notAvailable
-    case authorizationDenied
-    case fetchFailed
-    case saveFailed
-} 
+enum HealthKitError: LocalizedError {
+    case notAvailable, fetchFailed, saveFailed
+    var errorDescription: String? {
+        switch self {
+        case .notAvailable: return "Apple Health is unavailable on this device."
+        case .fetchFailed: return "Apple Health records could not be read."
+        case .saveFailed: return "Records could not be saved. Unlock your device and try again."
+        }
+    }
+}

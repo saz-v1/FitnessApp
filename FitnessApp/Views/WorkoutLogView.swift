@@ -1,165 +1,117 @@
 import SwiftUI
 
 struct WorkoutLogView: View {
-    @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject private var userManager: UserManager
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingAddWorkout = false
     @State private var showingInsights = false
-    @State private var showingTargetedWorkout = false
     @State private var selectedWorkout: WorkoutRecord?
     @State private var isEditing = false
-    
+    @State private var searchText = ""
+
+    private func dayGroups(for workouts: [WorkoutRecord], calendar: Calendar) -> [WorkoutDayGroup] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matches = workouts.filter {
+            query.isEmpty || $0.type.rawValue.localizedCaseInsensitiveContains(query) ||
+            ($0.notes?.localizedCaseInsensitiveContains(query) ?? false) ||
+            ($0.exercises?.contains { $0.name.localizedCaseInsensitiveContains(query) } ?? false)
+        }.sorted { $0.date > $1.date }
+        let groups = Dictionary(grouping: matches) { calendar.startOfDay(for: $0.date) }
+        return groups.keys.sorted(by: >).map { WorkoutDayGroup(date: $0, records: groups[$0] ?? []) }
+    }
+
     var body: some View {
-        NavigationView {
+        let workouts = userManager.user.workoutHistory
+        let calendar = Calendar.current
+        let now = Date()
+        // Reuse one sorted/grouped snapshot for every visible history row.
+        let groups = dayGroups(for: workouts, calendar: calendar)
+        let start = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+        let workoutsThisWeek = workouts.reduce(0) { $0 + ($1.date >= start && $1.date <= now ? 1 : 0) }
+        let streak = FitnessMetrics.streak(dates: workouts.map(\.date), now: now, calendar: calendar)
+
+        return NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Stats Overview
-                    HStack(spacing: 20) {
-                        // Total Workouts Card
-                        WorkoutStatCard(
-                            title: "Total Workouts",
-                            value: "\(userManager.user.workoutHistory.count)",
-                            icon: "figure.run",
-                            color: .blue
-                        )
-                        
-                        // This Week Card
-                        WorkoutStatCard(
-                            title: "This Week",
-                            value: "\(workoutsThisWeek)",
-                            icon: "calendar",
-                            color: .green
-                        )
-                        
-                        // Streak Card
-                        WorkoutStatCard(
-                            title: "Current Streak",
-                            value: "\(currentStreak)",
-                            icon: "flame.fill",
-                            color: .orange
-                        )
-                    }
-                    .padding(.horizontal)
-                    
-                    // Workout History
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Workout History")
-                            .font(.title2)
-                            .bold()
-                            .padding(.horizontal)
-                        
-                        ForEach(groupedWorkouts.keys.sorted(by: >), id: \.self) { date in
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(formatDate(date))
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal)
-                                
-                                ForEach(groupedWorkouts[date] ?? []) { workout in
-                                    WorkoutCard(workout: workout, isEditing: isEditing) {
-                                        if isEditing {
-                                            userManager.deleteWorkout(workout)
-                                        } else {
-                                            selectedWorkout = workout
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("Move at your own pace. Every session counts.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    statistics(sessions: workouts.count, thisWeek: workoutsThisWeek, streak: streak)
+                    Button { showingAddWorkout = true } label: { Label("Log a workout", systemImage: "plus") }
+                        .buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("add-workout")
+                    Button { showingInsights = true } label: {
+                        AppCard {
+                            HStack(spacing: 14) {
+                                IconBadge(icon: "chart.xyaxis.line")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Your workout patterns").font(.headline).foregroundStyle(.primary)
+                                    Text("Frequency, duration and consistency").font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }.buttonStyle(.plain)
+                    if workouts.isEmpty {
+                        AppEmptyState(title: "Your next chapter starts here",
+                            message: "A walk, a stretch, a gym session. Log your first workout and watch your progress build.",
+                            icon: "figure.walk")
+                    } else if groups.isEmpty {
+                        AppEmptyState(title: "No matching workouts",
+                            message: "Try a different type, exercise or note.", icon: "magnifyingglass")
+                    } else {
+                        AppSectionTitle(title: "Workout history")
+                        LazyVStack(alignment: .leading, spacing: 12) {
+                            ForEach(groups) { group in
+                                Section {
+                                    ForEach(group.records) { record in
+                                        WorkoutCard(workout: record, isEditing: isEditing) {
+                                            if isEditing { userManager.deleteWorkout(record) }
+                                            else { selectedWorkout = record }
                                         }
                                     }
+                                } header: {
+                                    Text(group.date.formatted(date: .abbreviated, time: .omitted))
+                                        .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                        .padding(.top, group.id == groups.first?.id ? 0 : 12)
                                 }
                             }
                         }
                     }
-                }
-                .padding(.vertical)
+                }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
             .navigationTitle("Workouts")
+            .searchable(text: $searchText, prompt: "Find a workout")
+            .appScreen()
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button(action: { showingAddWorkout = true }) {
-                            Label("Add Workout", systemImage: "plus")
-                        }
-                        Button(action: { showingInsights = true }) {
-                            Label("View Insights", systemImage: "chart.bar")
-                        }
-                        Button(action: { showingTargetedWorkout = true }) {
-                            Label("Get Targeted Workout", systemImage: "figure.run")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 20))
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(isEditing ? "Done" : "Edit") {
-                        isEditing.toggle()
+                ToolbarItem(placement: .topBarLeading) {
+                    if !workouts.isEmpty {
+                        Button(isEditing ? "Done" : "Edit") { isEditing.toggle() }
                     }
                 }
             }
-        }
-        .sheet(item: $selectedWorkout) { workout in
-            NavigationView {
-                WorkoutDetailView(workout: workout)
-            }
-        }
-        .sheet(isPresented: $showingAddWorkout) {
-            NavigationView {
-                AddWorkoutSheet()
-            }
-        }
-        .sheet(isPresented: $showingInsights) {
-            NavigationView {
-                WorkoutInsightsView()
-            }
-        }
-        .sheet(isPresented: $showingTargetedWorkout) {
-            NavigationView {
-                TargetedWorkoutView()
+            .sheet(item: $selectedWorkout) { workout in NavigationStack { WorkoutDetailView(workout: workout) } }
+            .sheet(isPresented: $showingAddWorkout) { AddWorkoutSheet() }
+            .sheet(isPresented: $showingInsights) { NavigationStack { WorkoutInsightsView() } }
+            .onChange(of: workouts.isEmpty) { _, isEmpty in
+                if isEmpty { isEditing = false }
             }
         }
     }
-    
-    private var groupedWorkouts: [Date: [WorkoutRecord]] {
-        Dictionary(grouping: userManager.user.workoutHistory) { workout in
-            Calendar.current.startOfDay(for: workout.date)
+
+    private func statistics(sessions: Int, thisWeek: Int, streak: Int) -> some View {
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10),
+            count: typeSize.isAccessibilitySize ? 1 : 3), spacing: 10) {
+            WorkoutStatCard(title: "Sessions", value: "\(sessions)", icon: "figure.run", color: AppTheme.accent)
+            WorkoutStatCard(title: "This week", value: "\(thisWeek)", icon: "calendar", color: AppTheme.accent)
+            WorkoutStatCard(title: "Day streak", value: "\(streak)", icon: "flame.fill", color: AppTheme.warm)
         }
     }
-    
-    private var workoutsThisWeek: Int {
-        let calendar = Calendar.current
-        let today = Date()
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
-        
-        return userManager.user.workoutHistory.filter { workout in
-            workout.date >= startOfWeek && workout.date <= today
-        }.count
-    }
-    
-    private var currentStreak: Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        var streak = 0
-        var currentDate = today
-        
-        while true {
-            let hasWorkout = userManager.user.workoutHistory.contains { workout in
-                calendar.isDate(workout.date, inSameDayAs: currentDate)
-            }
-            
-            if hasWorkout {
-                streak += 1
-                currentDate = calendar.date(byAdding: .day, value: -1, to: currentDate)!
-            } else {
-                break
-            }
-        }
-        
-        return streak
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: date)
-    }
+}
+
+private struct WorkoutDayGroup: Identifiable {
+    let date: Date
+    let records: [WorkoutRecord]
+    var id: Date { date }
 }
 
 struct WorkoutStatCard: View {
@@ -167,30 +119,14 @@ struct WorkoutStatCard: View {
     let value: String
     let icon: String
     let color: Color
-    
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.title)
-                .bold()
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-            
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 100)
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: icon).font(.title3).foregroundStyle(color).accessibilityHidden(true)
+            Text(value).font(.system(.title, design: .rounded, weight: .bold)).monospacedDigit()
+            Text(title).font(.caption.weight(.medium)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 22))
+            .accessibilityElement(children: .combine)
     }
 }
 
@@ -198,191 +134,127 @@ struct WorkoutCard: View {
     let workout: WorkoutRecord
     let isEditing: Bool
     let onTap: () -> Void
-    
+    @State private var confirmingDelete = false
+
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(workout.type.rawValue)
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Text(formatDate(workout.date))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                HStack(spacing: 16) {
-                    Label(formatDuration(workout.duration), systemImage: "clock")
-                        .foregroundColor(.secondary)
-                    
-                    if let calories = workout.caloriesBurned {
-                        Label("\(Int(calories)) kcal", systemImage: "flame.fill")
-                            .foregroundColor(.orange)
-                    }
-                    
-                    if let exercises = workout.exercises, !exercises.isEmpty {
-                        Label("\(exercises.count) exercises", systemImage: "figure.run")
-                            .foregroundColor(.secondary)
+        HStack(spacing: 12) {
+            Button { if !isEditing { onTap() } } label: {
+                AppCard {
+                    HStack(alignment: .top, spacing: 14) {
+                        IconBadge(icon: workout.type.symbol)
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(workout.type.rawValue).font(.headline).foregroundStyle(.primary)
+                            Text("\(workout.duration.workoutDuration) · \(workout.intensity.rawValue)")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            if let calories = workout.caloriesBurned {
+                                Label("\(calories) kcal", systemImage: "flame").font(.caption).foregroundStyle(AppTheme.warm)
+                            }
+                            Text(workout.date.formatted(date: .omitted, time: .shortened))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        if !isEditing { Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary) }
                     }
                 }
-                .font(.subheadline)
-            }
-            
+            }.buttonStyle(.plain).disabled(isEditing)
             if isEditing {
-                Button(action: onTap) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                        .font(.body)
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 8)
+                Button(role: .destructive) { confirmingDelete = true } label: {
+                    Image(systemName: "trash").frame(width: 44, height: 44)
+                }.accessibilityLabel("Delete \(workout.type.rawValue) workout")
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .padding(.horizontal)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !isEditing {
-                onTap()
-            }
-            onTap()
-        }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        let hours = minutes / 60
-        let remainingMinutes = minutes % 60
-        
-        if hours > 0 {
-            return "\(hours)h \(remainingMinutes)m"
-        } else {
-            return "\(remainingMinutes)m"
-        }
+        .alert("Delete this workout?", isPresented: $confirmingDelete) {
+            Button("Delete Workout", role: .destructive, action: onTap)
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("This removes the entry from FitSwift. Apple Health records are kept.") }
     }
 }
 
 struct WorkoutDetailView: View {
     let workout: WorkoutRecord
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var userManager: UserManager
-    
+    @EnvironmentObject private var userManager: UserManager
+    @State private var confirmingDelete = false
     var body: some View {
         List {
-            Section(header: Text("Workout Details")) {
-                DetailRow(title: "Type", value: workout.type.rawValue)
-                DetailRow(title: "Date", value: formatDate(workout.date))
-                DetailRow(title: "Duration", value: formatDuration(workout.duration))
-                DetailRow(title: "Intensity", value: workout.intensity.rawValue)
-                if let calories = workout.caloriesBurned {
-                    DetailRow(title: "Calories Burned", value: "\(Int(calories)) kcal")
-                }
+            Section {
+                HStack(spacing: 16) {
+                    IconBadge(icon: workout.type.symbol)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(workout.type.rawValue).font(.title2.weight(.bold))
+                        Text(workout.date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }.padding(.vertical, 10)
             }
-            
+            Section("Session") {
+                DetailRow(title: "Duration", value: workout.duration.workoutDuration)
+                DetailRow(title: "Intensity", value: workout.intensity.rawValue)
+                if let calories = workout.caloriesBurned { DetailRow(title: "Energy", value: "\(calories) kcal") }
+            }
             if let exercises = workout.exercises, !exercises.isEmpty {
-                Section(header: Text("Exercises")) {
+                Section("Exercises") {
                     ForEach(exercises) { exercise in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(exercise.name)
-                                .font(.headline)
-                            
-                            HStack(spacing: 16) {
-                                if let sets = exercise.sets, let reps = exercise.reps {
-                                    Label("\(sets) sets × \(reps) reps", systemImage: "repeat")
-                                }
-                                
-                                if let weight = exercise.weight {
-                                    Label("\(Int(weight)) kg", systemImage: "scalemass")
-                                }
-                                
-                                if let duration = exercise.duration {
-                                    Label(formatDuration(duration), systemImage: "clock")
-                                }
+                            Text(exercise.name).font(.headline)
+                            if let sets = exercise.sets, let reps = exercise.reps {
+                                Text("\(sets) sets × \(reps) reps").font(.subheadline).foregroundStyle(.secondary)
                             }
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        }
-                        .padding(.vertical, 4)
+                            if let weight = exercise.weight {
+                                Text("\(userManager.displayWeight(weight).formatted(.number.precision(.fractionLength(0...1)))) \(userManager.weightUnit)")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
+                            if let duration = exercise.duration {
+                                Text(duration.workoutDuration).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, 6)
                     }
                 }
             }
-            
-            if let notes = workout.notes, !notes.isEmpty {
-                Section(header: Text("Notes")) {
-                    Text(notes)
-                        .font(.body)
-                }
-            }
-            
+            if let notes = workout.notes, !notes.isEmpty { Section("Notes") { Text(notes) } }
             Section {
-                Button(role: .destructive) {
-                    userManager.deleteWorkout(workout)
-                    dismiss()
-                } label: {
-                    Label("Delete Workout", systemImage: "trash")
-                }
+                Button(role: .destructive) { confirmingDelete = true } label: { Label("Delete Workout", systemImage: "trash") }
             }
+            if let error = userManager.persistenceError { Section { Text(error).foregroundStyle(.red) } }
         }
-        .navigationTitle("Workout Details")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Done") {
-                    dismiss()
-                }
+        .appForm().navigationTitle("Workout").navigationBarTitleDisplayMode(.inline).appScreen()
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .alert("Delete this workout?", isPresented: $confirmingDelete) {
+            Button("Delete Workout", role: .destructive) {
+                if userManager.deleteWorkout(workout) { dismiss() }
             }
-        }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-    
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        let hours = minutes / 60
-        let remainingMinutes = minutes % 60
-        
-        if hours > 0 {
-            return "\(hours)h \(remainingMinutes)m"
-        } else {
-            return "\(remainingMinutes)m"
-        }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("This removes the entry from FitSwift. Apple Health records are kept.") }
     }
 }
 
 struct DetailRow: View {
     let title: String
     let value: String
-    
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
             Text(title)
-                .font(.body)
-            Spacer()
-            Text(value)
-                .font(.body)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
+            Spacer(minLength: 8)
+            Text(value).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        }.padding(.vertical, 4)
     }
 }
 
-#Preview {
-    WorkoutLogView()
-        .environmentObject(UserManager())
-} 
+extension WorkoutRecord.WorkoutType {
+    var symbol: String {
+        switch self {
+        case .cardio: return "figure.walk"
+        case .strength: return "dumbbell"
+        case .flexibility: return "figure.flexibility"
+        case .hiit: return "bolt.heart"
+        case .yoga: return "figure.yoga"
+        case .other: return "figure.run"
+        }
+    }
+}
+private extension TimeInterval {
+    var workoutDuration: String {
+        let minutes = Int(self / 60)
+        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+    }
+}

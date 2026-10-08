@@ -1,316 +1,150 @@
 import SwiftUI
 import Charts
-import HealthKit
 
-/// A view that displays detailed weight history with an interactive chart
 struct WeightDetailView: View {
-    // MARK: - Properties
-    
-    /// Reference to the user manager for accessing user data
-    @EnvironmentObject var userManager: UserManager
-    
-    /// Controls the presentation of the add weight sheet
+    @EnvironmentObject private var userManager: UserManager
+    @Environment(\.dismiss) private var dismiss
     @State private var isAddingWeight = false
-    
-    /// Tracks the current scroll position in the chart
-    @State private var scrollPosition: Date?
-    
-    // MARK: - Computed Properties
-    
-    /// Calculates the Y-axis range for the chart based on weight data
-    private var weightRange: ClosedRange<Double> {
-        let weights = userManager.user.weightHistory.map { userManager.displayWeight($0.weight) }
-            .filter { !$0.isNaN && $0.isFinite }
-        let goalWeight = userManager.user.goalWeight.map { userManager.displayWeight($0) }
-        let allWeights = goalWeight.map { weights + [$0] } ?? weights
-        
-        if allWeights.isEmpty {
-            let currentWeight = userManager.displayWeight(userManager.user.weight)
-            guard !currentWeight.isNaN && currentWeight.isFinite else {
-                return 0...100
-            }
-            return (currentWeight - 5)...(currentWeight + 5)
-        }
-        
-        let minWeight = (allWeights.min() ?? 0) - 2
-        let maxWeight = (allWeights.max() ?? 100) + 2
-        
-        if minWeight.isNaN || maxWeight.isNaN || minWeight >= maxWeight {
-            return 0...100
-        }
-        
-        return minWeight...maxWeight
-    }
-    
-    // MARK: - Body
-    
+    @State private var period: ChartPeriod = .month
     var body: some View {
+        let now = Date()
+        let records = userManager.user.weightHistory.filter { $0.date <= now && $0.weight.isFinite && $0.weight > 0 }
+            .sorted { $0.date < $1.date }
+        let plottedRecords = records.filter { $0.date >= period.start(now: now) }
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Current Weight Stats
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Current Weight")
-                        .font(.headline)
-                    
-                    HStack(alignment: .bottom, spacing: 8) {
-                        Text(String(format: "%.1f", userManager.user.weight))
-                            .font(.title)
-                            .bold()
-                        Text(userManager.user.usesMetric ? "kg" : "lbs")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(height: 44)
-                    
-                    if let goalWeight = userManager.user.goalWeight {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Goal Weight: \(String(format: "%.1f", goalWeight)) \(userManager.user.usesMetric ? "kg" : "lbs")")
-                            
-                            let difference = goalWeight - userManager.user.weight
-                            Text(difference > 0 ? "Need to gain" : "Need to lose")
-                                .foregroundColor(.secondary)
-                            + Text(" \(String(format: "%.1f", abs(difference))) \(userManager.user.usesMetric ? "kg" : "lbs")")
-                                .bold()
+            LazyVStack(alignment: .leading, spacing: 24) {
+                AppCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        IconBadge(icon: "scalemass")
+                        Text("Current weight").font(.headline)
+                        Text("\(userManager.user.weight.formatted(.number.precision(.fractionLength(1)))) \(userManager.weightUnit)")
+                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        if let goal = userManager.user.goalWeight {
+                            Text("Goal: \(goal.formatted(.number.precision(.fractionLength(1)))) \(userManager.weightUnit)")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                            WeightGoalView(currentWeight: userManager.user.weight, goalWeight: goal, usesMetric: userManager.user.usesMetric)
                         }
-                        .font(.subheadline)
-                        .padding(.top, 8)
                     }
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                
-                // Add New Entry Button
-                Button(action: { isAddingWeight = true }) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3)
-                        Text("Add Weight Entry")
-                            .font(.headline)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                }
-                .padding(.vertical, 8)
-                
-                // Weight Trend Chart
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Weight Trend")
-                        .font(.headline)
-                        .padding(.horizontal, 16)
-                    
-                    if userManager.user.weightHistory.isEmpty {
-                        Text("No weight records yet")
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .frame(height: 200)
-                    } else {
-                        Chart {
-                            // Area fill under the line
-                            ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
-                                if !record.weight.isNaN && record.weight.isFinite {
-                                    AreaMark(
-                                        x: .value("Date", record.date),
-                                        y: .value("Weight", userManager.displayWeight(record.weight))
-                                    )
-                                    .foregroundStyle(
-                                        .linearGradient(
-                                            colors: [.green.opacity(0.3), .green.opacity(0.1)],
-                                            startPoint: .top,
-                                            endPoint: .bottom
-                                        )
-                                    )
-                                }
-                            }
-                            
-                            // Main line
-                            ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
-                                if !record.weight.isNaN && record.weight.isFinite {
-                                    LineMark(
-                                        x: .value("Date", record.date),
-                                        y: .value("Weight", userManager.displayWeight(record.weight))
-                                    )
-                                    .foregroundStyle(.green)
-                                    .interpolationMethod(.catmullRom)
-                                    .lineStyle(StrokeStyle(lineWidth: 2))
-                                }
-                            }
-                            
-                            // Data points (simplified)
-                            ForEach(userManager.user.weightHistory.sorted(by: { $0.date < $1.date })) { record in
-                                if !record.weight.isNaN && record.weight.isFinite {
-                                    PointMark(
-                                        x: .value("Date", record.date),
-                                        y: .value("Weight", userManager.displayWeight(record.weight))
-                                    )
-                                    .foregroundStyle(.green)
-                                    .symbolSize(8)
-                                }
-                            }
-                            
-                            // Goal line
-                            if let goalWeight = userManager.user.goalWeight,
-                               !goalWeight.isNaN && goalWeight.isFinite {
-                                RuleMark(
-                                    y: .value("Goal", userManager.displayWeight(goalWeight))
-                                )
-                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                                .foregroundStyle(.red)
-                                .annotation(position: .trailing) {
-                                    Text("Goal")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
-                            }
+                Button { isAddingWeight = true } label: { Label("Add Weight Entry", systemImage: "plus") }
+                    .buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("add-weight")
+                AppCard {
+                    VStack(alignment: .leading, spacing: 18) {
+                        AppSectionTitle(title: "Your weight trend")
+                        ChartPeriodPicker(selection: $period)
+                        if plottedRecords.isEmpty {
+                            Text("No measurements in this period. Try another range or log a weight.")
+                                .font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 32)
+                        } else {
+                            WeightTrendChart(records: plottedRecords, usesMetric: userManager.user.usesMetric,
+                                goal: userManager.user.goalWeight, period: period, domain: period.domain(now: now))
                         }
-                        .frame(height: 300)
-                        .chartYScale(domain: weightRange)
-                        
-                        // X-axis configuration
-                        .chartXAxis {
-                            AxisMarks(values: .automatic(desiredCount: 12)) { value in
-                                AxisGridLine()
-                                AxisValueLabel(format: .dateTime.month().day())
-                                    .font(.caption)
-                            }
-                        }
-                        
-                        // Y-axis configuration
-                        .chartYAxis {
-                            AxisMarks { value in
-                                AxisGridLine()
-                                AxisValueLabel {
-                                    if let weight = value.as(Double.self),
-                                       !weight.isNaN && weight.isFinite {
-                                        Text(String(format: "%.1f", weight))
-                                            .font(.caption)
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Enable horizontal scrolling
-                        .chartXSelection(value: $scrollPosition)
-                        .chartScrollableAxes(.horizontal)
-                        .chartXScale(domain: getDateRange())
-                        
-                        // Legend
-                        HStack(spacing: 20) {
-                            // Area fill legend
-                            HStack(spacing: 8) {
-                                Rectangle()
-                                    .fill(.linearGradient(colors: [.green.opacity(0.3), .green.opacity(0.1)], startPoint: .top, endPoint: .bottom))
-                                    .frame(width: 20, height: 20)
-                                    .cornerRadius(4)
-                                Text("Weight Trend")
-                                    .font(.caption)
-                            }
-                            
-                            // Line and points legend
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(.green)
-                                    .frame(width: 8, height: 8)
-                                Text("Data Points")
-                                    .font(.caption)
-                            }
-                            
-                            // Goal line legend
-                            if let goalWeight = userManager.user.goalWeight,
-                               !goalWeight.isNaN && goalWeight.isFinite {
-                                HStack(spacing: 8) {
-                                    Rectangle()
-                                        .fill(.red)
-                                        .frame(width: 20, height: 2)
-                                        .cornerRadius(1)
-                                    Text("Goal")
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                }
-                            }
-                        }
-                        .padding(.top, 8)
                     }
                 }
-                .padding(16)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                
-                // Weight History
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("History")
-                        .font(.headline)
-                        .padding(.horizontal, 16)
-                    
-                    ForEach(userManager.user.weightHistory.sorted(by: { $0.date > $1.date })) { record in
+                if !records.isEmpty {
+                    AppSectionTitle(title: "Measurements", subtitle: "\(records.count) entries")
+                    ForEach(records.reversed()) { record in
                         WeightHistoryRow(record: record, usesMetric: userManager.user.usesMetric)
                     }
                 }
-            }
-            .padding(16)
+            }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
         }
-        .navigationTitle("Weight History")
-        .sheet(isPresented: $isAddingWeight) {
-            AddWeightSheet()
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// Calculates the date range for the X-axis with appropriate padding
-    private func getDateRange() -> ClosedRange<Date> {
-        let sortedRecords = userManager.user.weightHistory.sorted(by: { $0.date < $1.date })
-        
-        // If no records, show last month
-        guard let firstDate = sortedRecords.first?.date,
-              let lastDate = sortedRecords.last?.date else {
-            return Calendar.current.date(byAdding: .month, value: -1, to: Date())!...Date()
-        }
-        
-        // Add 7 days padding on the start, but don't go beyond current date
-        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: firstDate)!
-        let endDate = min(Calendar.current.date(byAdding: .day, value: 7, to: lastDate)!, Date())
-        
-        return startDate...endDate
+        .navigationTitle("Weight").navigationBarTitleDisplayMode(.inline).appScreen()
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .sheet(isPresented: $isAddingWeight) { AddWeightSheet() }
     }
 }
 
-/// A row displaying a single weight record
+/// A chart selection never sorts or filters the full measurement history.
+private struct WeightTrendChart: View {
+    let records: [WeightRecord]
+    let usesMetric: Bool
+    let goal: Double?
+    let period: ChartPeriod
+    let domain: ClosedRange<Date>
+    @State private var selectedDate: Date?
+    private var unit: String { usesMetric ? "kg" : "lbs" }
+    private func displayWeight(_ kilograms: Double) -> Double { usesMetric ? kilograms : kilograms / 0.45359237 }
+
+    var body: some View {
+        let selected = selectedDate.flatMap { date in
+            records.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+        }
+        let measurements = records.map { displayWeight($0.weight) } + (goal.map { [$0] } ?? [])
+        let range = max(0, (measurements.min() ?? 0) - 2)...((measurements.max() ?? 100) + 2)
+        VStack(alignment: .leading, spacing: 18) {
+            ChartSummary {
+                ChartReadout(title: selected?.date.formatted(date: .abbreviated, time: .omitted) ?? "Latest in this period",
+                    value: "\(displayWeight(selected?.weight ?? records.last?.weight ?? 0).formatted(.number.precision(.fractionLength(1)))) \(unit)")
+                ChartReadout(title: "Change", value: changeText, detail: "First to last entry")
+            }
+            chart(selected: selected, range: range)
+            Text("Touch the chart to explore a measurement.").font(.caption).foregroundStyle(.secondary)
+            if goal != nil {
+                Label("Your goal", systemImage: "minus").font(.caption).foregroundStyle(AppTheme.warm)
+            }
+        }
+        .onChange(of: period) { _, _ in selectedDate = nil }
+    }
+
+    private func chart(selected: WeightRecord?, range: ClosedRange<Double>) -> some View {
+        Chart {
+            ForEach(records) { record in
+                LineMark(x: .value("Date", record.date), y: .value("Weight", displayWeight(record.weight)))
+                    .foregroundStyle(AppTheme.accent).lineStyle(StrokeStyle(lineWidth: 3))
+                PointMark(x: .value("Date", record.date), y: .value("Weight", displayWeight(record.weight)))
+                    .foregroundStyle(AppTheme.accent).symbolSize(24)
+                    .accessibilityLabel(record.date.formatted(date: .abbreviated, time: .omitted))
+                    .accessibilityValue("\(displayWeight(record.weight)) \(unit)")
+            }
+            if let goal {
+                RuleMark(y: .value("Goal", goal)).foregroundStyle(AppTheme.warm)
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 4]))
+            }
+            if let selected {
+                RuleMark(x: .value("Selected", selected.date)).foregroundStyle(.secondary.opacity(0.4))
+                PointMark(x: .value("Selected date", selected.date), y: .value("Selected weight", displayWeight(selected.weight)))
+                    .foregroundStyle(AppTheme.accent).symbolSize(80)
+            }
+        }
+        .frame(height: 230).chartYScale(domain: range).chartXScale(domain: domain)
+        .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { value in
+            AxisValueLabel { if let date = value.as(Date.self) { ChartDateLabel(date: date) } }
+        } }
+        .chartYAxis { AxisMarks(position: .leading) }
+        .chartXSelection(value: $selectedDate)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+    private var changeText: String {
+        guard records.count > 1, let first = records.first, let last = records.last else { return "—" }
+        let difference = displayWeight(last.weight - first.weight)
+        return "\(difference > 0 ? "+" : "")\(difference.formatted(.number.precision(.fractionLength(1)))) \(unit)"
+    }
+}
+
 struct WeightHistoryRow: View {
     let record: WeightRecord
     let usesMetric: Bool
-    @EnvironmentObject var userManager: UserManager
-    
+    @EnvironmentObject private var userManager: UserManager
+    @State private var confirmingDelete = false
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(String(format: "%.1f", userManager.displayWeight(record.weight)))
-                    .font(.title3)
-                    .bold()
-                + Text(" \(usesMetric ? "kg" : "lbs")")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+        AppCard {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(userManager.displayWeight(record.weight).formatted(.number.precision(.fractionLength(1)))) \(usesMetric ? "kg" : "lbs")")
+                        .font(.title3.weight(.semibold))
+                    Text(record.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Button(role: .destructive) { confirmingDelete = true } label: {
+                    Image(systemName: "trash").frame(width: 44, height: 44)
+                }.buttonStyle(.plain).accessibilityLabel("Delete weight entry")
             }
-            
-            Spacer()
-            
-            Text(record.date.formatted(date: .abbreviated, time: .shortened))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
         }
-        .padding(16)
-        .frame(height: 60)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .alert("Delete this measurement?", isPresented: $confirmingDelete) {
+            Button("Delete Weight Entry", role: .destructive) { userManager.deleteWeightRecord(record) }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("This removes the entry from FitSwift. Apple Health records are kept.") }
     }
 }
-
-#Preview {
-    NavigationView {
-        WeightDetailView()
-            .environmentObject(UserManager())
-    }
-} 

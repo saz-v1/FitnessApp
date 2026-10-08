@@ -7,15 +7,22 @@ struct AddWeightSheet: View {
     @State private var date = Date()
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var weightFocused: Bool
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
+                    Label("A snapshot of your progress", systemImage: "scalemass")
+                        .font(.headline).foregroundStyle(AppTheme.accent).padding(.vertical, 8)
+                }
+                Section("Measurement") {
                     HStack {
                         Text("Weight")
                         Spacer()
                         TextField("Amount", value: $weight, format: .number)
+                            .accessibilityIdentifier("weight-amount")
+                            .focused($weightFocused)
                             .multilineTextAlignment(.trailing)
                             .keyboardType(.decimalPad)
                         Text(userManager.user.usesMetric ? "kg" : "lbs")
@@ -30,8 +37,10 @@ struct AddWeightSheet: View {
                         .font(.caption)
                 }
             }
+            .appForm()
             .navigationTitle("Add Weight")
             .navigationBarTitleDisplayMode(.inline)
+            .appScreen()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -45,7 +54,11 @@ struct AddWeightSheet: View {
                             await saveWeight()
                         }
                     }
-                    .disabled(weight <= 0 || isSaving)
+                    .disabled(!weight.isFinite || weight < (userManager.user.usesMetric ? 1 : 1 / 0.45359237) || weight > (userManager.user.usesMetric ? 700 : 700 / 0.45359237) || isSaving)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { weightFocused = false }
                 }
             }
         }
@@ -55,22 +68,18 @@ struct AddWeightSheet: View {
         isSaving = true
         errorMessage = nil
         
-        do {
-            // Convert to kg if using imperial
-            let weightInKg = userManager.user.usesMetric ? weight : weight * 0.453592
-            
-            // Save to HealthKit
-            try await HealthKitService.shared.saveWeight(weightInKg, date: date)
-            
-            // Save to app's data
-            let record = WeightRecord(weight: weight, date: date)
-            userManager.user.weightHistory.append(record)
-            userManager.saveUser()
-            
-            dismiss()
-        } catch {
-            errorMessage = "Failed to save weight: \(error.localizedDescription)"
+        let weightInKg = userManager.user.usesMetric ? weight : weight * 0.45359237
+        guard weightInKg.isFinite, weightInKg > 0, weightInKg <= 700 else {
+            errorMessage = "Enter a valid weight."
+            isSaving = false
+            return
         }
+        guard userManager.addWeight(weightInKg, date: date) else {
+            errorMessage = userManager.persistenceError ?? "Enter a valid weight and date."
+            isSaving = false
+            return
+        }
+        dismiss()
         
         isSaving = false
     }
@@ -79,4 +88,4 @@ struct AddWeightSheet: View {
 #Preview {
     AddWeightSheet()
         .environmentObject(UserManager())
-} 
+}

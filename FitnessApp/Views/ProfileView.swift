@@ -10,6 +10,11 @@ struct ProfileView: View {
     
     /// Tracks which text field is currently focused for keyboard management
     @FocusState private var focusedField: Field?
+    @State private var draft = User(height: 170, weight: 70, age: 25, gender: .other, usesMetric: true,
+        activityLevel: .moderatelyActive, weightHistory: [], workoutHistory: [], calorieHistory: [])
+    @AppStorage("healthIntegrationEnabled") private var healthIntegrationEnabled = false
+    @State private var isLoaded = false
+    @State private var savedMessage: String?
     
     /// Manages HealthKit authorization and data access
     @StateObject private var healthKitManager = HealthKitManager.shared
@@ -25,25 +30,90 @@ struct ProfileView: View {
     // MARK: - Body
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                notificationsSection
+                Section {
+                    HStack(spacing: 16) {
+                        IconBadge(icon: "person.crop.circle")
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Make it yours").font(.title3.weight(.bold))
+                            Text("Your details help shape your daily estimates.")
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                    }.padding(.vertical, 8)
+                }.listRowBackground(AppTheme.surface)
+                if isLoaded && !draft.hasValidMeasurements {
+                    Text("Enter valid height, weight, goal weight and age before saving.").font(.caption).foregroundColor(.red)
+                }
                 measurementsSection
                 personalSection
                 goalsSection
                 calorieTargetSection
                 syncSection
+                notificationsSection
+                privacySection
+                if let error = userManager.persistenceError {
+                    Section { Text(error).foregroundColor(.red) }
+                }
+            }
+            .appForm()
+            .safeAreaInset(edge: .bottom) {
+                if let savedMessage {
+                    Label(savedMessage, systemImage: "checkmark.circle.fill")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.accent)
+                        .padding(14).frame(maxWidth: .infinity)
+                        .background(AppTheme.softAccent)
+                }
             }
             .navigationTitle("Profile")
-            .onChange(of: userManager.user) { _, _ in
-                userManager.saveUser()
+            .appScreen()
+            .onAppear {
+                if !isLoaded { draft = userManager.user; isLoaded = true }
+            }
+            .onChange(of: draft) { _, _ in
+                if !draft.hasSameProfile(as: userManager.user) { savedMessage = nil }
+            }
+            .onChange(of: userManager.user) { old, new in
+                if draft.hasSameProfile(as: old) {
+                    draft = new
+                } else {
+                    draft.weightHistory = new.weightHistory
+                    draft.workoutHistory = new.workoutHistory
+                    draft.calorieHistory = new.calorieHistory
+                }
             }
             .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        focusedField = nil
+                        if userManager.updateProfile(draft) {
+                            draft = userManager.user
+                            savedMessage = "Profile saved."
+                        }
+                    }
+                    .disabled(!draft.hasValidMeasurements)
+                }
                 ToolbarItem(placement: .keyboard) {
                     Button("Done") {
                         focusedField = nil
                     }
                 }
+            }
+        }
+    }
+
+    private func measurementBinding(_ keyPath: WritableKeyPath<User, Double>) -> Binding<Double> {
+        Binding(get: { draft[keyPath: keyPath] }, set: { value in
+            draft[keyPath: keyPath] = value
+        })
+    }
+
+    private var privacySection: some View {
+        Section("Privacy & Health Information") {
+            Text("Your journal stays on this device. No account or internet connection is needed.")
+                .font(.caption).foregroundColor(.secondary)
+            NavigationLink("Privacy Policy") {
+                PrivacyPolicyView()
             }
         }
     }
@@ -71,31 +141,36 @@ struct ProfileView: View {
     /// Section containing user's height and weight measurements with unit system toggle
     private var measurementsSection: some View {
         Section("Measurements") {
-            Toggle("Use Metric System", isOn: Binding(
-                get: { userManager.user.usesMetric },
-                set: { _ in userManager.toggleUnits() }
-            ))
+            Picker("Units", selection: Binding(
+                get: { draft.usesMetric },
+                set: { value in if value != draft.usesMetric { draft.toggleUnits() } }
+            )) {
+                Text("Metric").tag(true)
+                Text("Imperial").tag(false)
+            }.pickerStyle(.segmented).accessibilityIdentifier("profile-units")
             
             HStack {
                 Text("Height")
                 Spacer()
-                TextField("Height", value: $userManager.user.height, format: .number)
+                TextField("Height", value: measurementBinding(\.height), format: .number.precision(.fractionLength(0...2)))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .height)
                     .frame(width: 80)
-                Text(userManager.heightUnit)
+                Text(draft.usesMetric ? "cm" : "in").foregroundStyle(.secondary)
+                    .accessibilityIdentifier("profile-height-unit")
             }
             
             HStack {
                 Text("Weight")
                 Spacer()
-                TextField("Weight", value: $userManager.user.weight, format: .number)
+                TextField("Weight", value: measurementBinding(\.weight), format: .number.precision(.fractionLength(0...2)))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .weight)
                     .frame(width: 80)
-                Text(userManager.weightUnit)
+                Text(draft.usesMetric ? "kg" : "lbs").foregroundStyle(.secondary)
+                    .accessibilityIdentifier("profile-weight-unit")
             }
         }
     }
@@ -103,7 +178,7 @@ struct ProfileView: View {
     /// Section containing personal information including gender, age, and activity level
     private var personalSection: some View {
         Section("Personal") {
-            Picker("Gender", selection: $userManager.user.gender) {
+            Picker("Gender", selection: $draft.gender) {
                 ForEach(User.Gender.allCases) { gender in
                     Text(gender.rawValue)
                         .tag(gender)
@@ -114,7 +189,8 @@ struct ProfileView: View {
             HStack {
                 Text("Age")
                 Spacer()
-                TextField("Age", value: $userManager.user.age, format: .number)
+                TextField("Age", value: $draft.age, format: .number)
+                    .accessibilityIdentifier("profile-age")
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.numberPad)
                     .focused($focusedField, equals: .age)
@@ -125,7 +201,7 @@ struct ProfileView: View {
             NavigationLink {
                 List(User.ActivityLevel.allCases) { level in
                     Button {
-                        userManager.user.activityLevel = level
+                        draft.activityLevel = level
                     } label: {
                         HStack {
                             VStack(alignment: .leading) {
@@ -138,19 +214,20 @@ struct ProfileView: View {
                             
                             Spacer()
                             
-                            if userManager.user.activityLevel == level {
+                            if draft.activityLevel == level {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(.green)
+                                    .foregroundColor(AppTheme.accent)
                             }
                         }
                     }
                 }
                 .navigationTitle("Activity Level")
+                .appForm()
             } label: {
                 HStack {
                     Text("Activity Level")
                     Spacer()
-                    Text(userManager.user.activityLevel.rawValue)
+                    Text(draft.activityLevel.rawValue)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -164,16 +241,19 @@ struct ProfileView: View {
             HStack {
                 Text("Goal Weight")
                 Spacer()
-                TextField("Goal Weight", value: $userManager.user.goalWeight, format: .number)
+                TextField("Optional", value: $draft.goalWeight, format: .number.precision(.fractionLength(0...2)))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.decimalPad)
                     .focused($focusedField, equals: .goalWeight)
                     .frame(width: 80)
-                Text(userManager.weightUnit)
+                Text(draft.usesMetric ? "kg" : "lbs").foregroundStyle(.secondary)
+            }
+            if draft.goalWeight != nil {
+                Button("Remove weight goal", role: .destructive) { draft.goalWeight = nil }
             }
             
             if let weeklyTarget = userManager.calculateWeeklyCalorieTarget() {
-                Text("Suggested daily calories: \(Int(weeklyTarget)) kcal")
+                Text("Saved profile daily estimate: \(Int(weeklyTarget)) kcal")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -182,15 +262,19 @@ struct ProfileView: View {
     
     /// Section displaying the calculated daily calorie target based on user's goals
     private var calorieTargetSection: some View {
-        Section("Daily Calorie Target") {
-            Text("\(Int(userManager.calculateDailyCalories())) kcal")
-                .bold()
+        Section("Saved Profile Calorie Estimate") {
+            Label("\(Int(userManager.calculateDailyCalories())) kcal / day", systemImage: "flame")
+                .font(.headline).foregroundStyle(AppTheme.accent)
         }
     }
     
     /// Section for managing HealthKit integration and data synchronization
     private var syncSection: some View {
         Section {
+            Toggle("Connect Apple Health", isOn: $healthIntegrationEnabled)
+                .onChange(of: healthIntegrationEnabled) { _, enabled in
+                    if enabled { Task { await healthKitManager.fetchTodaysHealthData() } }
+                }
             Button(action: {
                 Task {
                     await healthKitService.syncWithHealthKit()
@@ -205,7 +289,7 @@ struct ProfileView: View {
                     }
                 }
             }
-            .disabled(healthKitService.isSyncing)
+            .disabled(healthKitService.isSyncing || !healthIntegrationEnabled)
             
             if let lastSync = healthKitService.lastSyncDate {
                 Text("Last synced: \(lastSync.formatted())")
@@ -249,4 +333,12 @@ private func getActivityLevelDescription(_ level: User.ActivityLevel) -> String 
 #Preview {
     ProfileView()
         .environmentObject(UserManager())
-} 
+}
+
+private extension User {
+    func hasSameProfile(as other: User) -> Bool {
+        height == other.height && weight == other.weight && age == other.age &&
+        gender == other.gender && usesMetric == other.usesMetric &&
+        activityLevel == other.activityLevel && goalWeight == other.goalWeight
+    }
+}

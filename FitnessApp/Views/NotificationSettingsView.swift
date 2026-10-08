@@ -1,70 +1,68 @@
 import SwiftUI
 
 struct NotificationSettingsView: View {
-    @StateObject private var notificationManager = NotificationManager.shared
-    @AppStorage("foodReminderEnabled") private var foodReminderEnabled = false
-    @AppStorage("workoutReminderEnabled") private var workoutReminderEnabled = false
-    @AppStorage("weightReminderEnabled") private var weightReminderEnabled = false
-    
+    @StateObject private var manager = NotificationManager.shared
+    @AppStorage("foodReminderEnabled") private var foodEnabled = false
+    @AppStorage("workoutReminderEnabled") private var workoutEnabled = false
+    @AppStorage("weightReminderEnabled") private var weightEnabled = false
     var body: some View {
         Form {
-            Section(header: Text("Daily Reminders")) {
-                Toggle("Food Log Reminder", isOn: $foodReminderEnabled)
-                    .onChange(of: foodReminderEnabled) { oldValue, newValue in
-                        if newValue {
-                            notificationManager.scheduleFoodLogReminder()
-                        } else {
-                            notificationManager.removeNotification(identifier: "foodLogReminder")
-                        }
-                    }
-                
-                Toggle("Workout Reminder", isOn: $workoutReminderEnabled)
-                    .onChange(of: workoutReminderEnabled) { oldValue, newValue in
-                        if newValue {
-                            notificationManager.scheduleWorkoutReminder()
-                        } else {
-                            notificationManager.removeNotification(identifier: "workoutReminder")
-                        }
-                    }
-            }
-            
-            Section(header: Text("Weekly Reminders")) {
-                Toggle("Weight Log Reminder", isOn: $weightReminderEnabled)
-                    .onChange(of: weightReminderEnabled) { oldValue, newValue in
-                        if newValue {
-                            notificationManager.scheduleWeightLogReminder()
-                        } else {
-                            notificationManager.removeNotification(identifier: "weightLogReminder")
-                        }
-                    }
-            }
-            
             Section {
-                Button("Test Notification") {
-                    notificationManager.scheduleTestNotification()
-                }
-            } header: {
-                Text("Testing")
-            } footer: {
-                Text("Send a test notification to verify the system is working.")
+                HStack(spacing: 14) {
+                    IconBadge(icon: "bell.badge")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("A gentle nudge").font(.headline)
+                        Text("Keep the habits that work for you.").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }.padding(.vertical, 10)
             }
-            
-            Section(footer: Text("Notifications will help you stay on track with your fitness goals.")) {
-                Button("Remove All Notifications") {
-                    notificationManager.removeAllNotifications()
-                    foodReminderEnabled = false
-                    workoutReminderEnabled = false
-                    weightReminderEnabled = false
+            Section {
+                Toggle(isOn: $foodEnabled) { reminderLabel("Log a meal", detail: "Daily at \(time(hour: 13))", icon: "fork.knife") }
+                    .onChange(of: foodEnabled) { _, enabled in
+                        if enabled { manager.scheduleFoodLogReminder() }
+                        else { manager.removeNotification(identifier: "foodLogReminder") }
+                    }
+                Toggle(isOn: $workoutEnabled) { reminderLabel("Log a workout", detail: "Daily at \(time(hour: 17))", icon: "figure.run") }
+                    .onChange(of: workoutEnabled) { _, enabled in
+                        if enabled { manager.scheduleWorkoutReminder() }
+                        else { manager.removeNotification(identifier: "workoutReminder") }
+                    }
+                Toggle(isOn: $weightEnabled) { reminderLabel("Log your weight", detail: "Mondays at \(time(hour: 10))", icon: "scalemass") }
+                    .onChange(of: weightEnabled) { _, enabled in
+                        if enabled { manager.scheduleWeightLogReminder() }
+                        else { manager.removeNotification(identifier: "weightLogReminder") }
+                    }
+            } header: { Text("Your reminders") } footer: {
+                Text("Times follow your device's local time. Reminder messages keep your health details private.")
+            }
+            if let error = manager.errorMessage {
+                Section {
+                    Label(error, systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    }
                 }
-                .foregroundColor(.red)
+            }
+            Section {
+                Button { manager.scheduleTestNotification() } label: { Label("Send a sample reminder", systemImage: "paperplane") }
+            } footer: { Text("A sample arrives in five seconds, if notifications are allowed.") }
+            Section {
+                Button("Turn off all reminders", role: .destructive) { manager.removeAllNotifications() }
             }
         }
-        .navigationTitle("Notifications")
+        .appForm().navigationTitle("Reminders").appScreen()
+    }
+    private func reminderLabel(_ title: String, detail: String, icon: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon).foregroundStyle(AppTheme.accent).frame(width: 24).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }.padding(.vertical, 6)
+        }
+    }
+    private func time(hour: Int) -> String {
+        (Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: Date()) ?? Date())
+            .formatted(date: .omitted, time: .shortened)
     }
 }
-
-#Preview {
-    NavigationView {
-        NotificationSettingsView()
-    }
-} 

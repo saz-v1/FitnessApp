@@ -78,3 +78,11 @@ iOSInjectionProject/
 # Configuration files
 Config.xcconfig
 Config.swift
+
+# Server secrets and local signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+DerivedData/

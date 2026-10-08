@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Root view of the application that sets up the main tab navigation
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("healthIntegrationEnabled") private var healthIntegrationEnabled = false
+    @StateObject private var notifications = NotificationManager.shared
     // StateObject ensures UserManager persists for the app's lifetime
     @StateObject private var userManager = UserManager.shared
     // StateObject for HealthKit integration
@@ -31,14 +34,37 @@ struct ContentView: View {
         // Inject UserManager into the environment for child views
         .environmentObject(userManager)
         // Set the app's accent color
-        .tint(.green)
-        // Request HealthKit authorization when app launches
+        .tint(AppTheme.accent)
+        .toolbarBackground(AppTheme.surface, for: .tabBar)
+        .safeAreaInset(edge: .top) {
+            if let error = userManager.persistenceError {
+                Text(error).font(.caption).foregroundColor(.red).padding().background(.regularMaterial)
+            }
+        }
+        .overlay {
+            if scenePhase != .active {
+                Color(.systemBackground).ignoresSafeArea().overlay {
+                    Label("FitSwift", systemImage: "lock.shield").font(.title)
+                }
+            }
+        }
         .task {
-            do {
-                try await healthKitManager.requestAuthorization()
-                await healthKitManager.fetchTodaysHealthData()
-            } catch {
-                print("Failed to authorize HealthKit: \(error)")
+            await notifications.reconcileReminders()
+            if healthIntegrationEnabled { await healthKitManager.fetchTodaysHealthData() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                userManager.retryLoadingSavedData()
+                Task {
+                    await notifications.reconcileReminders()
+                    if healthIntegrationEnabled { await healthKitManager.fetchTodaysHealthData() }
+                }
+            }
+        }
+        .onChange(of: healthIntegrationEnabled) { _, enabled in
+            if !enabled {
+                healthKitManager.disconnect()
+                HealthKitService.shared.disconnect()
             }
         }
     }
