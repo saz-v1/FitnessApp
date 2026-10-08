@@ -35,7 +35,6 @@ struct AppCard<Content: View>: View {
     var body: some View {
         content.padding(20).frame(maxWidth: .infinity, alignment: .leading)
             .background(AppTheme.surface, in: RoundedRectangle(cornerRadius: 24))
-            .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(.primary.opacity(0.04)) }
     }
 }
 
@@ -54,10 +53,10 @@ struct AppSectionTitle: View {
     let title: String
     var subtitle: String? = nil
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 4) {
             Text(title).font(.title3.weight(.bold))
             if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary) }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
     }
 }
 
@@ -94,10 +93,13 @@ struct AppPrimaryButtonStyle: ButtonStyle {
 }
 
 struct AppSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.headline).padding(.horizontal, 18).padding(.vertical, 15)
-            .frame(maxWidth: .infinity, minHeight: 48).foregroundStyle(AppTheme.accent)
-            .background(AppTheme.softAccent, in: RoundedRectangle(cornerRadius: 16))
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .foregroundStyle(enabled ? AppTheme.accent : Color.secondary)
+            .background(enabled ? AppTheme.softAccent : Color.secondary.opacity(0.15),
+                in: RoundedRectangle(cornerRadius: 16))
             .opacity(configuration.isPressed ? 0.75 : 1)
     }
 }
@@ -109,6 +111,20 @@ private struct AppScreenStyle: ViewModifier {
             .toolbarBackground(AppTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(colorScheme, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct AppScreenHeader: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    var body: some View {
+        VStack(spacing: 12) {
+            IconBadge(icon: icon)
+            Text(title).font(.title2.weight(.bold))
+            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+        }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(.vertical, 12)
     }
 }
 

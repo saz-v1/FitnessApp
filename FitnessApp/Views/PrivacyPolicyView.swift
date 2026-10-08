@@ -7,7 +7,7 @@ struct PrivacyPolicyView: View {
             VStack(alignment: .leading, spacing: 24) {
                 AppSectionTitle(title: "Your data stays with you", subtitle: "FitSwift · Local app privacy policy")
                 policySection("What you save", icon: "lock.shield") {
-                    Text("FitSwift stores the profile measurements, goals, weight entries, meals, workouts, exercise details and achievement progress you enter on this device. These records support your journal, charts and fitness estimates.")
+                    Text("FitSwift stores the profile measurements, goals, weight entries, meals, saved meal templates, workouts, exercise details and achievement progress you enter on this device. Active workout drafts include your sets, reps, lap splits and timer timestamps so you can resume. These records support your journal, charts and fitness estimates.")
                     Text("Your saved journal uses iOS file protection and is excluded from device backups. There is no account, server upload, advertising, tracking or third-party analytics in this version.")
                 }
                 policySection("Apple Health is optional", icon: "heart") {
@@ -15,7 +15,8 @@ struct PrivacyPolicyView: View {
                     Text("Turn off Apple Health in Profile to stop new reads and imports. Manage or revoke permissions in Apple Health under your profile, Apps, then FitSwift. Turning off access keeps entries you previously imported in your journal.")
                 }
                 policySection("Reminders", icon: "bell") {
-                    Text("Reminders are optional local notifications managed by iOS. Their permission and enabled settings stay on your device. They do not require a server and do not include your fitness measurements.")
+                    Text("Reminders are optional local notifications managed by iOS. Their chosen times, days, sound and enabled settings stay on your device. They do not require a server and do not include your fitness measurements.")
+                    Text("Rest timer alerts are also optional local notifications. Food and exercise references are bundled with the app; searches and portion calculations run on this device.")
                 }
                 policySection("Keeping and deleting data", icon: "trash") {
                     Text("Entries stay in your journal until you delete them or delete the app. You can delete meals, weights and workouts from their history screens. To remove all journal records and your profile, delete FitSwift through iOS Settings, General, iPhone Storage. Offloading the app keeps its data.")

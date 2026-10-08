@@ -31,7 +31,7 @@ struct WeightDetailView: View {
                 AppCard {
                     VStack(alignment: .leading, spacing: 18) {
                         AppSectionTitle(title: "Your weight trend")
-                        ChartPeriodPicker(selection: $period)
+                        ChartPeriodPicker(selection: $period, periods: ChartPeriod.allCases)
                         if plottedRecords.isEmpty {
                             Text("No measurements in this period. Try another range or log a weight.")
                                 .font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 32)

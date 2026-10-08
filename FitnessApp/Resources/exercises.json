@@ -1,0 +1,1584 @@
+[
+  {
+    "id": "ankle-mobility",
+    "name": "Ankle mobility",
+    "category": "Mobility",
+    "muscles": [
+      "Calves",
+      "Ankles"
+    ],
+    "equipment": "Wall",
+    "tracking": "Reps",
+    "instructions": "With the heel grounded, gently move the knee forward over the foot. Use a pain-free range.",
+    "aliases": [
+      "knee to wall"
+    ]
+  },
+  {
+    "id": "assisted-pull-up",
+    "name": "Assisted pull-up",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Assisted pull-up machine",
+    "tracking": "Reps",
+    "instructions": "Select enough assistance for a controlled movement. Pull upward without swinging and lower smoothly.",
+    "aliases": [
+      "assisted pullup"
+    ]
+  },
+  {
+    "id": "back-extension",
+    "name": "Back extension",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Glutes"
+    ],
+    "equipment": "Back extension bench",
+    "tracking": "Reps",
+    "instructions": "Hinge through a comfortable range and return until your trunk is aligned. Avoid overextending your back.",
+    "aliases": [
+      "hyperextension"
+    ]
+  },
+  {
+    "id": "band-pull-apart",
+    "name": "Band pull-apart",
+    "category": "Shoulders",
+    "muscles": [
+      "Upper back",
+      "Shoulders"
+    ],
+    "equipment": "Resistance band",
+    "tracking": "Reps",
+    "instructions": "Hold a light band in front and pull hands apart through a comfortable range. Keep your trunk still.",
+    "aliases": [
+      "band pullapart"
+    ]
+  },
+  {
+    "id": "barbell-squat",
+    "name": "Barbell back squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Use a rack and suitable safeties. Brace your trunk, lower under control, and stand without rounding your back.",
+    "aliases": [
+      "back squat"
+    ]
+  },
+  {
+    "id": "bench-press",
+    "name": "Barbell bench press",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps",
+      "Shoulders"
+    ],
+    "equipment": "Barbell and bench",
+    "tracking": "Reps",
+    "instructions": "Use a spotter or safeties. Keep feet stable, lower the bar toward your chest with control, then press up.",
+    "aliases": [
+      "bench press"
+    ]
+  },
+  {
+    "id": "barbell-curl",
+    "name": "Barbell curl",
+    "category": "Arms",
+    "muscles": [
+      "Biceps"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Keep your trunk steady and elbows close. Curl the bar up and lower smoothly.",
+    "aliases": [
+      "ez bar curl"
+    ]
+  },
+  {
+    "id": "deadlift",
+    "name": "Barbell deadlift",
+    "category": "Legs",
+    "muscles": [
+      "Hamstrings",
+      "Glutes",
+      "Back"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Place the bar close to your legs, brace your trunk and stand by extending hips and knees. Lower with control.",
+    "aliases": [
+      "deadlift"
+    ]
+  },
+  {
+    "id": "barbell-overhead-press",
+    "name": "Barbell overhead press",
+    "category": "Shoulders",
+    "muscles": [
+      "Shoulders",
+      "Triceps"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Brace your trunk and press the bar overhead. Keep your back steady and lower toward your shoulders.",
+    "aliases": [
+      "military press",
+      "ohp"
+    ]
+  },
+  {
+    "id": "battle-rope",
+    "name": "Battle ropes",
+    "category": "Cardio",
+    "muscles": [
+      "Arms",
+      "Shoulders",
+      "Cardiovascular"
+    ],
+    "equipment": "Battle ropes",
+    "tracking": "Time",
+    "instructions": "Stand balanced with knees soft. Create controlled rope waves without locking your shoulders.",
+    "aliases": [
+      "rope waves"
+    ]
+  },
+  {
+    "id": "barbell-row",
+    "name": "Bent-over barbell row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Hinge at your hips with a steady back. Pull the bar toward your trunk, then lower without swinging.",
+    "aliases": [
+      "bent over row"
+    ]
+  },
+  {
+    "id": "bicycle-crunch",
+    "name": "Bicycle crunch",
+    "category": "Core",
+    "muscles": [
+      "Abdominals",
+      "Obliques"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Alternate bringing a shoulder toward the opposite knee. Move slowly and keep your neck relaxed.",
+    "aliases": [
+      "bicycle crunches"
+    ]
+  },
+  {
+    "id": "bird-dog",
+    "name": "Bird dog",
+    "category": "Core",
+    "muscles": [
+      "Core",
+      "Back"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "From hands and knees, extend opposite arm and leg while keeping hips level. Return and alternate.",
+    "aliases": [
+      "birddog"
+    ]
+  },
+  {
+    "id": "box-step-over",
+    "name": "Box step-over",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Stable box",
+    "tracking": "Reps",
+    "instructions": "Step onto a stable box and down the other side. Use a height you can control and keep the whole foot supported.",
+    "aliases": [
+      "box step overs"
+    ]
+  },
+  {
+    "id": "burpee",
+    "name": "Burpee",
+    "category": "Cardio",
+    "muscles": [
+      "Full body",
+      "Cardiovascular"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "Move from standing to a supported plank and return. Step instead of jumping to reduce impact.",
+    "aliases": [
+      "burpees"
+    ]
+  },
+  {
+    "id": "cable-fly",
+    "name": "Cable chest fly",
+    "category": "Chest",
+    "muscles": [
+      "Chest"
+    ],
+    "equipment": "Cable machine",
+    "tracking": "Reps",
+    "instructions": "Stand balanced between the cables. Bring handles together with a slight elbow bend, then return slowly.",
+    "aliases": [
+      "cable crossover"
+    ]
+  },
+  {
+    "id": "calf-stretch",
+    "name": "Calf stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Calves"
+    ],
+    "equipment": "Wall",
+    "tracking": "Time",
+    "instructions": "Place hands against a wall and extend one leg behind. Keep that heel grounded and hold comfortably.",
+    "aliases": [
+      "calves stretch"
+    ]
+  },
+  {
+    "id": "cat-cow",
+    "name": "Cat-cow",
+    "category": "Mobility",
+    "muscles": [
+      "Back",
+      "Core"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "From hands and knees, gently round and extend your back. Move slowly within a comfortable range.",
+    "aliases": [
+      "cat cow stretch"
+    ]
+  },
+  {
+    "id": "chest-stretch",
+    "name": "Chest stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Chest",
+      "Shoulders"
+    ],
+    "equipment": "Doorway",
+    "tracking": "Time",
+    "instructions": "Rest a forearm against a stable doorway and gently turn away. Stop within a comfortable shoulder range.",
+    "aliases": [
+      "pec stretch"
+    ]
+  },
+  {
+    "id": "chest-supported-row",
+    "name": "Chest-supported row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Dumbbells and incline bench",
+    "tracking": "Reps",
+    "instructions": "Keep your chest supported on the bench. Pull weights toward your sides and lower with control.",
+    "aliases": [
+      "incline row"
+    ]
+  },
+  {
+    "id": "child-pose",
+    "name": "Child's pose",
+    "category": "Mobility",
+    "muscles": [
+      "Back",
+      "Hips"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Kneel and sit back toward your heels while reaching forward. Use support and a comfortable range.",
+    "aliases": [
+      "balasana"
+    ]
+  },
+  {
+    "id": "chin-up",
+    "name": "Chin-up",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Pull-up bar",
+    "tracking": "Reps",
+    "instructions": "Use a palms-toward-you grip on a secure bar. Pull up smoothly and lower without dropping.",
+    "aliases": [
+      "chinup"
+    ]
+  },
+  {
+    "id": "clamshell",
+    "name": "Clamshell",
+    "category": "Legs",
+    "muscles": [
+      "Glutes"
+    ],
+    "equipment": "Mat or resistance band",
+    "tracking": "Reps",
+    "instructions": "Lie on your side with knees bent. Open the top knee while keeping hips steady, then return.",
+    "aliases": [
+      "clam shells"
+    ]
+  },
+  {
+    "id": "cobra-pose",
+    "name": "Cobra pose",
+    "category": "Mobility",
+    "muscles": [
+      "Back",
+      "Abdominals"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Lie face down and lift your chest gently with hands supporting. Keep the lower back comfortable.",
+    "aliases": [
+      "bhujangasana"
+    ]
+  },
+  {
+    "id": "shoulder-stretch",
+    "name": "Cross-body shoulder stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Shoulders"
+    ],
+    "equipment": "None",
+    "tracking": "Time",
+    "instructions": "Bring one arm across your chest and support it gently with the other arm. Keep shoulders relaxed.",
+    "aliases": [
+      "cross body stretch"
+    ]
+  },
+  {
+    "id": "crunch",
+    "name": "Crunch",
+    "category": "Core",
+    "muscles": [
+      "Abdominals"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Lie with knees bent. Lift your shoulders slightly using your trunk and lower without pulling on your neck.",
+    "aliases": [
+      "crunches"
+    ]
+  },
+  {
+    "id": "cycling",
+    "name": "Cycling",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "Bicycle",
+    "tracking": "Laps",
+    "instructions": "Use a suitable route and bike setup. Record timed intervals or loops with the lap control.",
+    "aliases": [
+      "bike",
+      "biking"
+    ]
+  },
+  {
+    "id": "dead-bug",
+    "name": "Dead bug",
+    "category": "Core",
+    "muscles": [
+      "Core"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Lie on your back and extend opposite arm and leg slowly. Keep your lower back comfortably supported.",
+    "aliases": [
+      "deadbug"
+    ]
+  },
+  {
+    "id": "downward-dog",
+    "name": "Downward-facing dog",
+    "category": "Mobility",
+    "muscles": [
+      "Shoulders",
+      "Hamstrings",
+      "Calves"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "From hands and knees, lift hips upward with knees soft. Keep a comfortable reach through hands and feet.",
+    "aliases": [
+      "down dog"
+    ]
+  },
+  {
+    "id": "dumbbell-bench-press",
+    "name": "Dumbbell bench press",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps"
+    ],
+    "equipment": "Dumbbells and bench",
+    "tracking": "Reps",
+    "instructions": "Lie on a stable bench. Lower the dumbbells beside your chest and press them up with wrists supported.",
+    "aliases": [
+      "db bench press"
+    ]
+  },
+  {
+    "id": "biceps-curl",
+    "name": "Dumbbell biceps curl",
+    "category": "Arms",
+    "muscles": [
+      "Biceps"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Keep elbows close to your sides. Curl the weights without swinging your trunk, then lower with control.",
+    "aliases": [
+      "bicep curl",
+      "db curl"
+    ]
+  },
+  {
+    "id": "dumbbell-fly",
+    "name": "Dumbbell fly",
+    "category": "Chest",
+    "muscles": [
+      "Chest"
+    ],
+    "equipment": "Dumbbells and bench",
+    "tracking": "Reps",
+    "instructions": "Keep a slight elbow bend. Open arms only through a comfortable range, then bring the weights together.",
+    "aliases": [
+      "chest fly"
+    ]
+  },
+  {
+    "id": "shoulder-press",
+    "name": "Dumbbell shoulder press",
+    "category": "Shoulders",
+    "muscles": [
+      "Shoulders",
+      "Triceps"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Start weights near shoulder height. Press overhead through a comfortable range without arching your back.",
+    "aliases": [
+      "overhead dumbbell press"
+    ]
+  },
+  {
+    "id": "shrug",
+    "name": "Dumbbell shrug",
+    "category": "Shoulders",
+    "muscles": [
+      "Trapezius"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Raise shoulders toward your ears, pause, then lower. Keep arms relaxed and avoid rolling your shoulders.",
+    "aliases": [
+      "shrugs"
+    ]
+  },
+  {
+    "id": "elliptical",
+    "name": "Elliptical trainer",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "Elliptical machine",
+    "tracking": "Time",
+    "instructions": "Stand balanced on the pedals and move smoothly. Adjust resistance to a sustainable level.",
+    "aliases": [
+      "cross trainer"
+    ]
+  },
+  {
+    "id": "face-pull",
+    "name": "Face pull",
+    "category": "Back",
+    "muscles": [
+      "Upper back",
+      "Shoulders"
+    ],
+    "equipment": "Cable and rope",
+    "tracking": "Reps",
+    "instructions": "Pull the rope toward your face with elbows comfortably raised. Keep the load light enough to avoid leaning back.",
+    "aliases": [
+      "facepull"
+    ]
+  },
+  {
+    "id": "farmer-carry",
+    "name": "Farmer carry",
+    "category": "Full body",
+    "muscles": [
+      "Forearms",
+      "Core",
+      "Legs"
+    ],
+    "equipment": "Dumbbells or kettlebells",
+    "tracking": "Time",
+    "instructions": "Carry manageable weights at your sides. Walk tall with a steady trunk and clear space ahead.",
+    "aliases": [
+      "farmers walk",
+      "loaded carry"
+    ]
+  },
+  {
+    "id": "flutter-kick",
+    "name": "Flutter kick",
+    "category": "Core",
+    "muscles": [
+      "Abdominals",
+      "Hip flexors"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Lie on your back and make small alternating leg movements. Keep the lower back supported.",
+    "aliases": [
+      "flutter kicks"
+    ]
+  },
+  {
+    "id": "forward-lunge",
+    "name": "Forward lunge",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Step forward into a comfortable lunge, then push through the front foot to return. Alternate sides if desired.",
+    "aliases": [
+      "lunges"
+    ]
+  },
+  {
+    "id": "front-raise",
+    "name": "Front raise",
+    "category": "Shoulders",
+    "muscles": [
+      "Shoulders"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Raise weights in front with a small elbow bend. Keep your trunk steady and use a controlled range.",
+    "aliases": [
+      "anterior raise"
+    ]
+  },
+  {
+    "id": "front-squat",
+    "name": "Front squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Barbell",
+    "tracking": "Reps",
+    "instructions": "Support the bar across the front of your shoulders. Keep elbows lifted and lower within a comfortable range.",
+    "aliases": [
+      "barbell front squat"
+    ]
+  },
+  {
+    "id": "glute-bridge",
+    "name": "Glute bridge",
+    "category": "Legs",
+    "muscles": [
+      "Glutes",
+      "Hamstrings"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Lie on your back with knees bent. Push through your heels, lift your hips, then lower slowly.",
+    "aliases": [
+      "bridges"
+    ]
+  },
+  {
+    "id": "goblet-squat",
+    "name": "Goblet squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Dumbbell or kettlebell",
+    "tracking": "Reps",
+    "instructions": "Hold the weight close to your chest. Sit down between your hips, keep heels grounded, and stand.",
+    "aliases": [
+      "goblet"
+    ]
+  },
+  {
+    "id": "hammer-curl",
+    "name": "Hammer curl",
+    "category": "Arms",
+    "muscles": [
+      "Biceps",
+      "Forearms"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Keep palms facing each other. Curl the weights while holding elbows steady, then lower slowly.",
+    "aliases": [
+      "neutral grip curl"
+    ]
+  },
+  {
+    "id": "hamstring-stretch",
+    "name": "Hamstring stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Hamstrings"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Extend one leg and hinge gently from the hip. Hold a comfortable stretch without bouncing.",
+    "aliases": [
+      "hamstrings stretch"
+    ]
+  },
+  {
+    "id": "hanging-knee-raise",
+    "name": "Hanging knee raise",
+    "category": "Core",
+    "muscles": [
+      "Abdominals",
+      "Hip flexors"
+    ],
+    "equipment": "Pull-up bar",
+    "tracking": "Reps",
+    "instructions": "Hang from a secure bar. Bring knees upward without swinging, then lower slowly.",
+    "aliases": [
+      "hanging knees"
+    ]
+  },
+  {
+    "id": "heel-tap",
+    "name": "Heel tap",
+    "category": "Core",
+    "muscles": [
+      "Abdominals",
+      "Obliques"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Lie with knees bent and reach gently toward alternate heels. Keep your neck comfortable.",
+    "aliases": [
+      "heel touches"
+    ]
+  },
+  {
+    "id": "high-knees",
+    "name": "High knees",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Time",
+    "instructions": "March or run on the spot, lifting knees comfortably. Keep posture tall and land softly.",
+    "aliases": [
+      "high knee running"
+    ]
+  },
+  {
+    "id": "hip-abduction",
+    "name": "Hip abduction machine",
+    "category": "Legs",
+    "muscles": [
+      "Glutes"
+    ],
+    "equipment": "Hip abduction machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the seat, then open your legs against manageable resistance. Return with control.",
+    "aliases": [
+      "abductor machine"
+    ]
+  },
+  {
+    "id": "hip-adduction",
+    "name": "Hip adduction machine",
+    "category": "Legs",
+    "muscles": [
+      "Adductors"
+    ],
+    "equipment": "Hip adduction machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the pads comfortably. Bring your legs together smoothly and return without bouncing.",
+    "aliases": [
+      "adductor machine"
+    ]
+  },
+  {
+    "id": "hip-flexor-stretch",
+    "name": "Hip flexor stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Hip flexors"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Use a half-kneeling stance. Gently move your hips forward while keeping your trunk upright.",
+    "aliases": [
+      "kneeling hip stretch"
+    ]
+  },
+  {
+    "id": "hip-thrust",
+    "name": "Hip thrust",
+    "category": "Legs",
+    "muscles": [
+      "Glutes",
+      "Hamstrings"
+    ],
+    "equipment": "Bench and barbell",
+    "tracking": "Reps",
+    "instructions": "Support your upper back on a stable bench. Lift hips until your trunk is level without arching your lower back.",
+    "aliases": [
+      "hip thrusts"
+    ]
+  },
+  {
+    "id": "incline-bench-press",
+    "name": "Incline bench press",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps",
+      "Shoulders"
+    ],
+    "equipment": "Barbell and incline bench",
+    "tracking": "Reps",
+    "instructions": "Set a moderate incline. Keep shoulders supported, lower the bar with control and press without bouncing.",
+    "aliases": [
+      "incline press"
+    ]
+  },
+  {
+    "id": "incline-push-up",
+    "name": "Incline push-up",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps"
+    ],
+    "equipment": "Stable raised surface",
+    "tracking": "Reps",
+    "instructions": "Place hands on a stable raised surface. Keep your body aligned and lower your chest toward it.",
+    "aliases": [
+      "elevated push up"
+    ]
+  },
+  {
+    "id": "jump-rope",
+    "name": "Jump rope",
+    "category": "Cardio",
+    "muscles": [
+      "Calves",
+      "Cardiovascular"
+    ],
+    "equipment": "Skipping rope",
+    "tracking": "Time",
+    "instructions": "Use small controlled jumps and clear space. Keep knees soft and select a sustainable rhythm.",
+    "aliases": [
+      "skipping"
+    ]
+  },
+  {
+    "id": "jumping-jack",
+    "name": "Jumping jack",
+    "category": "Cardio",
+    "muscles": [
+      "Full body",
+      "Cardiovascular"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "Step or jump feet apart while raising arms, then return. Choose the low-impact step version if preferred.",
+    "aliases": [
+      "jumping jacks",
+      "star jumps"
+    ]
+  },
+  {
+    "id": "kettlebell-swing",
+    "name": "Kettlebell swing",
+    "category": "Cardio",
+    "muscles": [
+      "Glutes",
+      "Hamstrings",
+      "Core"
+    ],
+    "equipment": "Kettlebell",
+    "tracking": "Reps",
+    "instructions": "Use a hip hinge to drive the weight forward. Keep your back steady and learn the technique before increasing load.",
+    "aliases": [
+      "kb swing"
+    ]
+  },
+  {
+    "id": "knee-push-up",
+    "name": "Knee push-up",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Support yourself on hands and knees. Keep hips aligned with your trunk as you lower and press.",
+    "aliases": [
+      "modified push up"
+    ]
+  },
+  {
+    "id": "lat-pulldown",
+    "name": "Lat pulldown",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Cable machine",
+    "tracking": "Reps",
+    "instructions": "Keep your trunk steady. Pull the bar toward your upper chest, then let it return with control.",
+    "aliases": [
+      "lat pull down"
+    ]
+  },
+  {
+    "id": "lateral-lunge",
+    "name": "Lateral lunge",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes",
+      "Adductors"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "Step to one side, bend that knee and move your hips back. Keep the other leg comfortably extended.",
+    "aliases": [
+      "side lunge"
+    ]
+  },
+  {
+    "id": "lateral-raise",
+    "name": "Lateral raise",
+    "category": "Shoulders",
+    "muscles": [
+      "Shoulders"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "With slightly bent elbows, raise weights to the sides through a comfortable range. Lower without swinging.",
+    "aliases": [
+      "side raise"
+    ]
+  },
+  {
+    "id": "leg-curl",
+    "name": "Leg curl",
+    "category": "Legs",
+    "muscles": [
+      "Hamstrings"
+    ],
+    "equipment": "Leg curl machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the pads and pivot to fit. Curl the legs through a comfortable range, then return slowly.",
+    "aliases": [
+      "hamstring curl"
+    ]
+  },
+  {
+    "id": "leg-extension",
+    "name": "Leg extension",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps"
+    ],
+    "equipment": "Leg extension machine",
+    "tracking": "Reps",
+    "instructions": "Align the machine pivot with your knees. Extend the legs smoothly and lower without swinging.",
+    "aliases": [
+      "quad extension"
+    ]
+  },
+  {
+    "id": "leg-press",
+    "name": "Leg press",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Leg press machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the seat for a comfortable depth. Push the platform away without locking knees, then return with control.",
+    "aliases": [
+      "legpress"
+    ]
+  },
+  {
+    "id": "leg-raise",
+    "name": "Lying leg raise",
+    "category": "Core",
+    "muscles": [
+      "Abdominals",
+      "Hip flexors"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Keep your lower back supported. Raise and lower legs within a range you can control.",
+    "aliases": [
+      "leg raises"
+    ]
+  },
+  {
+    "id": "chest-press",
+    "name": "Machine chest press",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps"
+    ],
+    "equipment": "Chest press machine",
+    "tracking": "Reps",
+    "instructions": "Adjust handles near chest height. Keep your back supported and press through a comfortable range.",
+    "aliases": [
+      "machine press"
+    ]
+  },
+  {
+    "id": "seated-row-machine",
+    "name": "Machine seated row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Row machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the seat and chest support. Pull handles toward your trunk and return without shrugging.",
+    "aliases": [
+      "machine row"
+    ]
+  },
+  {
+    "id": "mountain-climber",
+    "name": "Mountain climber",
+    "category": "Core",
+    "muscles": [
+      "Core",
+      "Shoulders"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "From a stable high plank, bring one knee forward, then alternate. Choose a pace you can control.",
+    "aliases": [
+      "mountain climbers"
+    ]
+  },
+  {
+    "id": "one-arm-row",
+    "name": "One-arm dumbbell row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Dumbbell and bench",
+    "tracking": "Reps",
+    "instructions": "Use a stable support for your free hand. Pull the dumbbell toward your hip while keeping your trunk steady.",
+    "aliases": [
+      "dumbbell row",
+      "db row"
+    ]
+  },
+  {
+    "id": "triceps-extension",
+    "name": "Overhead triceps extension",
+    "category": "Arms",
+    "muscles": [
+      "Triceps"
+    ],
+    "equipment": "Dumbbell",
+    "tracking": "Reps",
+    "instructions": "Hold a manageable weight overhead. Bend and extend elbows while keeping the trunk steady.",
+    "aliases": [
+      "tricep extension"
+    ]
+  },
+  {
+    "id": "pallof-press",
+    "name": "Pallof press",
+    "category": "Core",
+    "muscles": [
+      "Core",
+      "Obliques"
+    ],
+    "equipment": "Cable or resistance band",
+    "tracking": "Reps",
+    "instructions": "Stand side-on to the resistance. Press hands forward while resisting trunk rotation.",
+    "aliases": [
+      "anti rotation press"
+    ]
+  },
+  {
+    "id": "pec-deck",
+    "name": "Pec deck",
+    "category": "Chest",
+    "muscles": [
+      "Chest"
+    ],
+    "equipment": "Pec deck machine",
+    "tracking": "Reps",
+    "instructions": "Adjust the seat and arm pads comfortably. Bring the pads together slowly and return within a comfortable range.",
+    "aliases": [
+      "machine fly"
+    ]
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "category": "Core",
+    "muscles": [
+      "Core"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Support your body on forearms and toes. Keep a steady line through your trunk and breathe normally.",
+    "aliases": [
+      "front plank"
+    ]
+  },
+  {
+    "id": "preacher-curl",
+    "name": "Preacher curl",
+    "category": "Arms",
+    "muscles": [
+      "Biceps"
+    ],
+    "equipment": "Preacher bench",
+    "tracking": "Reps",
+    "instructions": "Support upper arms on the pad. Curl through a comfortable range and avoid forcefully locking elbows.",
+    "aliases": [
+      "preacher curls"
+    ]
+  },
+  {
+    "id": "pull-up",
+    "name": "Pull-up",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Pull-up bar",
+    "tracking": "Reps",
+    "instructions": "Grip a secure bar, brace your trunk and pull yourself upward without swinging. Lower with control.",
+    "aliases": [
+      "pullup"
+    ]
+  },
+  {
+    "id": "push-up",
+    "name": "Push-up",
+    "category": "Chest",
+    "muscles": [
+      "Chest",
+      "Triceps",
+      "Core"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "Keep your trunk steady and hands comfortably apart. Lower your chest, then push up. Use a raised surface if needed.",
+    "aliases": [
+      "press up",
+      "pushup"
+    ]
+  },
+  {
+    "id": "bulgarian-split-squat",
+    "name": "Rear-foot elevated split squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bench and dumbbells",
+    "tracking": "Reps",
+    "instructions": "Rest one foot on a low stable support. Lower the front leg under control and keep the front heel grounded.",
+    "aliases": [
+      "bulgarian split squat"
+    ]
+  },
+  {
+    "id": "resistance-band-row",
+    "name": "Resistance band row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Resistance band",
+    "tracking": "Reps",
+    "instructions": "Secure the band safely. Pull toward your trunk while keeping shoulders relaxed, then return slowly.",
+    "aliases": [
+      "band row"
+    ]
+  },
+  {
+    "id": "reverse-fly",
+    "name": "Reverse fly",
+    "category": "Shoulders",
+    "muscles": [
+      "Shoulders",
+      "Upper back"
+    ],
+    "equipment": "Dumbbells",
+    "tracking": "Reps",
+    "instructions": "Hinge or use chest support. Open your arms to the sides with a small elbow bend, then lower slowly.",
+    "aliases": [
+      "rear delt fly"
+    ]
+  },
+  {
+    "id": "reverse-lunge",
+    "name": "Reverse lunge",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Step backward, lower both knees with control, then return to standing. Keep the front knee aligned with the foot.",
+    "aliases": [
+      "backward lunge"
+    ]
+  },
+  {
+    "id": "romanian-deadlift",
+    "name": "Romanian deadlift",
+    "category": "Legs",
+    "muscles": [
+      "Hamstrings",
+      "Glutes"
+    ],
+    "equipment": "Barbell or dumbbells",
+    "tracking": "Reps",
+    "instructions": "With a small knee bend, move your hips back and keep the weight near your legs. Stop before your back rounds.",
+    "aliases": [
+      "rdl"
+    ]
+  },
+  {
+    "id": "rowing",
+    "name": "Rowing machine",
+    "category": "Cardio",
+    "muscles": [
+      "Back",
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "Rowing machine",
+    "tracking": "Time",
+    "instructions": "Drive with the legs, lean slightly and pull the handle. Reverse that sequence on the recovery.",
+    "aliases": [
+      "rower",
+      "erg"
+    ]
+  },
+  {
+    "id": "running",
+    "name": "Running",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "None",
+    "tracking": "Laps",
+    "instructions": "Run at a sustainable pace. Tap Lap at each interval or loop; use the timer to record the whole activity.",
+    "aliases": [
+      "run",
+      "jogging"
+    ]
+  },
+  {
+    "id": "russian-twist",
+    "name": "Russian twist",
+    "category": "Core",
+    "muscles": [
+      "Obliques"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Sit with a steady trunk and rotate gently from side to side. Use a light load or no load.",
+    "aliases": [
+      "russian twists"
+    ]
+  },
+  {
+    "id": "seated-row",
+    "name": "Seated cable row",
+    "category": "Back",
+    "muscles": [
+      "Back",
+      "Biceps"
+    ],
+    "equipment": "Cable machine",
+    "tracking": "Reps",
+    "instructions": "Sit tall with a stable trunk. Pull handles toward your body without leaning back, then extend arms slowly.",
+    "aliases": [
+      "cable row"
+    ]
+  },
+  {
+    "id": "seated-calf-raise",
+    "name": "Seated calf raise",
+    "category": "Legs",
+    "muscles": [
+      "Calves"
+    ],
+    "equipment": "Calf raise machine",
+    "tracking": "Reps",
+    "instructions": "Keep the balls of your feet on the platform. Raise your heels, pause, then lower comfortably.",
+    "aliases": [
+      "seated calves"
+    ]
+  },
+  {
+    "id": "side-plank",
+    "name": "Side plank",
+    "category": "Core",
+    "muscles": [
+      "Core",
+      "Obliques"
+    ],
+    "equipment": "Mat",
+    "tracking": "Time",
+    "instructions": "Support yourself on one forearm and the side of your foot or knee. Lift hips and hold comfortably.",
+    "aliases": [
+      "side bridge"
+    ]
+  },
+  {
+    "id": "single-leg-deadlift",
+    "name": "Single-leg deadlift",
+    "category": "Legs",
+    "muscles": [
+      "Hamstrings",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Balance on one leg, hinge at the hip and extend the other leg behind. Use a support if balance is difficult.",
+    "aliases": [
+      "single leg rdl"
+    ]
+  },
+  {
+    "id": "sit-up",
+    "name": "Sit-up",
+    "category": "Core",
+    "muscles": [
+      "Abdominals"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "Use a comfortable range and controlled pace. Avoid pulling on your neck or using momentum.",
+    "aliases": [
+      "situps"
+    ]
+  },
+  {
+    "id": "sled-push",
+    "name": "Sled push",
+    "category": "Full body",
+    "muscles": [
+      "Legs",
+      "Core"
+    ],
+    "equipment": "Weighted sled",
+    "tracking": "Time",
+    "instructions": "Keep your trunk stable and take controlled steps. Choose a load that allows steady movement.",
+    "aliases": [
+      "prowler push"
+    ]
+  },
+  {
+    "id": "split-squat",
+    "name": "Split squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Use a staggered stance. Bend both knees while keeping balance, then return. Record reps for each side consistently.",
+    "aliases": [
+      "static lunge"
+    ]
+  },
+  {
+    "id": "squat",
+    "name": "Squat",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight",
+    "tracking": "Reps",
+    "instructions": "Stand with feet comfortably apart. Bend hips and knees, keep heels grounded, then stand with control.",
+    "aliases": [
+      "bodyweight squat"
+    ]
+  },
+  {
+    "id": "stair-climber",
+    "name": "Stair climber",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Glutes",
+      "Cardiovascular"
+    ],
+    "equipment": "Stair machine",
+    "tracking": "Time",
+    "instructions": "Step at a controlled pace and use rails for balance if needed. Avoid leaning heavily on the rails.",
+    "aliases": [
+      "stairmaster"
+    ]
+  },
+  {
+    "id": "calf-raise",
+    "name": "Standing calf raise",
+    "category": "Legs",
+    "muscles": [
+      "Calves"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Hold a support if needed. Rise onto the balls of your feet, pause, then lower with control.",
+    "aliases": [
+      "calf raises"
+    ]
+  },
+  {
+    "id": "quad-stretch",
+    "name": "Standing quadriceps stretch",
+    "category": "Mobility",
+    "muscles": [
+      "Quadriceps"
+    ],
+    "equipment": "None",
+    "tracking": "Time",
+    "instructions": "Use a support for balance. Bend one knee and hold the ankle gently without pulling into pain.",
+    "aliases": [
+      "quad stretch"
+    ]
+  },
+  {
+    "id": "stationary-bike",
+    "name": "Stationary cycling",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "Exercise bike",
+    "tracking": "Time",
+    "instructions": "Adjust the seat and resistance comfortably. Use the timer for each interval.",
+    "aliases": [
+      "spin",
+      "exercise bike"
+    ]
+  },
+  {
+    "id": "step-up",
+    "name": "Step-up",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Stable step",
+    "tracking": "Reps",
+    "instructions": "Place the whole foot on a stable step. Drive through that leg to stand up, then step down under control.",
+    "aliases": [
+      "step ups"
+    ]
+  },
+  {
+    "id": "swimming",
+    "name": "Swimming",
+    "category": "Cardio",
+    "muscles": [
+      "Full body",
+      "Cardiovascular"
+    ],
+    "equipment": "Pool",
+    "tracking": "Laps",
+    "instructions": "Choose a comfortable stroke. Record laps when safe to interact with your device between lengths.",
+    "aliases": [
+      "swim",
+      "pool lengths"
+    ]
+  },
+  {
+    "id": "thoracic-rotation",
+    "name": "Thoracic rotation",
+    "category": "Mobility",
+    "muscles": [
+      "Upper back"
+    ],
+    "equipment": "Mat",
+    "tracking": "Reps",
+    "instructions": "From a side-lying or supported position, rotate your upper trunk gently while keeping hips steady.",
+    "aliases": [
+      "open book stretch"
+    ]
+  },
+  {
+    "id": "triceps-dip",
+    "name": "Triceps dip",
+    "category": "Arms",
+    "muscles": [
+      "Triceps",
+      "Chest"
+    ],
+    "equipment": "Dip bars",
+    "tracking": "Reps",
+    "instructions": "Use secure bars or assistance. Lower only through a comfortable shoulder range, then press up.",
+    "aliases": [
+      "dips"
+    ]
+  },
+  {
+    "id": "triceps-kickback",
+    "name": "Triceps kickback",
+    "category": "Arms",
+    "muscles": [
+      "Triceps"
+    ],
+    "equipment": "Dumbbell",
+    "tracking": "Reps",
+    "instructions": "Hinge forward with a steady trunk. Keep the upper arm still while extending the elbow behind you.",
+    "aliases": [
+      "tricep kickback"
+    ]
+  },
+  {
+    "id": "triceps-pushdown",
+    "name": "Triceps pushdown",
+    "category": "Arms",
+    "muscles": [
+      "Triceps"
+    ],
+    "equipment": "Cable machine",
+    "tracking": "Reps",
+    "instructions": "Keep elbows near your sides. Extend arms down without moving your trunk, then return slowly.",
+    "aliases": [
+      "tricep push down"
+    ]
+  },
+  {
+    "id": "walking",
+    "name": "Walking",
+    "category": "Cardio",
+    "muscles": [
+      "Legs",
+      "Cardiovascular"
+    ],
+    "equipment": "None",
+    "tracking": "Laps",
+    "instructions": "Walk at a comfortable pace. Record a lap at each loop or interval if helpful.",
+    "aliases": [
+      "walk",
+      "hiking"
+    ]
+  },
+  {
+    "id": "walking-lunge",
+    "name": "Walking lunge",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Bodyweight or dumbbells",
+    "tracking": "Reps",
+    "instructions": "Take controlled lunge steps forward. Allow space ahead and count each step as one rep.",
+    "aliases": [
+      "walking lunges"
+    ]
+  },
+  {
+    "id": "wall-sit",
+    "name": "Wall sit",
+    "category": "Legs",
+    "muscles": [
+      "Quadriceps",
+      "Glutes"
+    ],
+    "equipment": "Wall",
+    "tracking": "Time",
+    "instructions": "Lean your back against a wall and bend knees to a comfortable depth. Hold while breathing normally.",
+    "aliases": [
+      "wall squat"
+    ]
+  },
+  {
+    "id": "wrist-curl",
+    "name": "Wrist curl",
+    "category": "Arms",
+    "muscles": [
+      "Forearms"
+    ],
+    "equipment": "Dumbbell",
+    "tracking": "Reps",
+    "instructions": "Support your forearm with the wrist free. Curl the wrist through a small comfortable range and lower slowly.",
+    "aliases": [
+      "forearm curl"
+    ]
+  }
+]

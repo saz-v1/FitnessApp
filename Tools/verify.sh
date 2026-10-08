@@ -14,6 +14,8 @@ if [[ -z "${DEVELOPER_DIR:-}" && -d /Applications/Xcode.app/Contents/Developer ]
 fi
 xcrun --sdk macosx swiftc -module-cache-path "$review_temp/modules" \
     FitnessApp/Models/User.swift FitnessApp/Models/WorkoutRecord.swift \
+    FitnessApp/Models/SavedMeal.swift FitnessApp/Models/ActivityCatalog.swift \
+    FitnessApp/Models/WorkoutSession.swift \
     FitnessApp/Models/UserManager.swift FitnessApp/Models/FitnessMetrics.swift \
     FitnessApp/Models/Achievement.swift Tools/RegressionChecks.swift \
     -o "$review_temp/regressions"

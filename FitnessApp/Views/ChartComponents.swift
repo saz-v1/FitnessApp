@@ -1,10 +1,10 @@
 import SwiftUI
 
 enum ChartPeriod: Int, CaseIterable, Identifiable {
-    case week = 7, month = 30, quarter = 90
+    case week = 7, month = 30, quarter = 90, year = 365
     var id: Int { rawValue }
-    var label: String { "\(rawValue) days" }
-    var axisStride: Int { self == .week ? 1 : (self == .month ? 7 : 21) }
+    var label: String { self == .year ? "1 year" : "\(rawValue) days" }
+    var axisStride: Int { self == .week ? 1 : (self == .month ? 7 : (self == .quarter ? 21 : 60)) }
     func start(now: Date = Date(), calendar: Calendar = .current) -> Date {
         calendar.date(byAdding: .day, value: 1 - rawValue, to: calendar.startOfDay(for: now)) ?? now
     }
@@ -15,9 +15,10 @@ enum ChartPeriod: Int, CaseIterable, Identifiable {
 
 struct ChartPeriodPicker: View {
     @Binding var selection: ChartPeriod
+    var periods: [ChartPeriod] = [.week, .month, .quarter]
     var body: some View {
         Picker("Time range", selection: $selection) {
-            ForEach(ChartPeriod.allCases) { Text($0.label).tag($0) }
+            ForEach(periods) { Text($0.label).tag($0) }
         }.pickerStyle(.segmented).accessibilityIdentifier("chart-period")
     }
 }

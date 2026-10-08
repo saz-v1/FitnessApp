@@ -5,7 +5,9 @@ import SwiftUI
 struct FitnessAppApp: App {
     init() {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ui-testing"), let id = Bundle.main.bundleIdentifier {
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           !ProcessInfo.processInfo.arguments.contains("--preserve-test-preferences"),
+           let id = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: id)
             UserDefaults(suiteName: "FitSwift.UITests")?.removePersistentDomain(forName: "FitSwift.UITests")
         }

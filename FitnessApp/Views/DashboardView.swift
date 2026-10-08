@@ -17,11 +17,11 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack(spacing: 5) {
                         Text(now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
                             .font(.subheadline.weight(.medium)).foregroundStyle(AppTheme.accent)
                         Text("A little progress, every day.").font(.title2.weight(.semibold))
-                    }
+                    }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
                     calorieOverview(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
                     quickActions
                     NavigationLink { HealthDataView() } label: { HealthDataSummaryCard() }
@@ -51,40 +51,45 @@ struct DashboardView: View {
 
     private func calorieOverview(todaysCalories: Double, dailyGoal: Double) -> some View {
         Button { showingCalorieDetail = true } label: {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    Label("Today's Calories", systemImage: "flame.fill").font(.headline)
-                    Spacer()
-                    Image(systemName: "arrow.up.right").accessibilityHidden(true)
-                }
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: 24) {
-                        calorieNumbers(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
-                        Spacer(minLength: 0)
-                        calorieRing(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
-                    }
-                    VStack(alignment: .leading, spacing: 20) {
-                        calorieNumbers(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
-                        calorieRing(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+            VStack(spacing: 22) {
+                Label("Today's Calories", systemImage: "flame.fill").font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .trailing) { Image(systemName: "arrow.up.right").accessibilityHidden(true) }
+                if typeSize.isAccessibilitySize {
+                    calorieNumbers(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                } else {
+                    VStack(spacing: 16) {
+                        ZStack {
+                            calorieRing(todaysCalories: todaysCalories, dailyGoal: dailyGoal)
+                            VStack(spacing: 4) {
+                                Text(todaysCalories.formatted(.number.precision(.fractionLength(0))))
+                                    .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
+                                    .lineLimit(1).minimumScaleFactor(0.6).frame(width: 116)
+                                Text("kcal logged").font(.caption).foregroundStyle(.white.opacity(0.8))
+                            }
+                        }
+                        if dailyGoal > 0 {
+                            Text("of \(Int(dailyGoal)) kcal").font(.subheadline).foregroundStyle(.white.opacity(0.8))
+                        }
                     }
                 }
                 Text(dailyGoal > 0 ? "\(Int(max(0, dailyGoal - todaysCalories))) kcal remaining · estimated target" :
                     "Log meals to build your daily picture.")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.8))
             }
-            .padding(24).frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(.white)
+            .multilineTextAlignment(.center).padding(24).frame(maxWidth: .infinity).foregroundStyle(.white)
             .background(AppTheme.hero, in: RoundedRectangle(cornerRadius: 28))
         }
         .buttonStyle(.plain).accessibilityIdentifier("dashboard-calories")
     }
 
     private func calorieNumbers(todaysCalories: Double, dailyGoal: Double) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 6) {
             Text(todaysCalories.formatted(.number.precision(.fractionLength(0))))
                 .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
             Text(dailyGoal > 0 ? "of \(Int(dailyGoal)) kcal" : "kcal logged")
                 .font(.subheadline).foregroundStyle(.white.opacity(0.8))
-        }
+        }.frame(maxWidth: .infinity)
     }
     private func calorieRing(todaysCalories: Double, dailyGoal: Double) -> some View {
         let progress = dailyGoal > 0 ? min(max(todaysCalories / dailyGoal, 0), 1) : 0
@@ -92,8 +97,7 @@ struct DashboardView: View {
             Circle().stroke(.white.opacity(0.15), lineWidth: 9)
             Circle().trim(from: 0, to: progress).stroke(Color(red: 0.76, green: 0.94, blue: 0.60),
                 style: StrokeStyle(lineWidth: 9, lineCap: .round)).rotationEffect(.degrees(-90))
-            Image(systemName: "leaf.fill").font(.title).foregroundStyle(.white.opacity(0.9))
-        }.frame(width: 86, height: 86).accessibilityHidden(true)
+        }.frame(width: 148, height: 148).accessibilityHidden(true)
     }
 
     private var quickActions: some View {
@@ -116,19 +120,20 @@ struct DashboardView: View {
         action: @escaping () -> Void) -> some View {
         Button(action: action) {
             AppCard {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack { IconBadge(icon: icon); Spacer(); Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary) }
+                VStack(spacing: 16) {
+                    IconBadge(icon: icon).frame(maxWidth: .infinity)
+                        .overlay(alignment: .trailing) { Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary) }
                     Text(title).font(.subheadline).foregroundStyle(.secondary)
                     Text(value).font(.system(.title, design: .rounded, weight: .bold)).foregroundStyle(.primary)
                     Text(detail).font(.caption).foregroundStyle(.secondary)
-                }
+                }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
         }.buttonStyle(.plain)
     }
 
     private func weeklySummary(calories: FitnessMetrics.CalorieSummary) -> some View {
         AppCard {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 16) {
                 AppSectionTitle(title: "This week's nourishment")
                 HStack(alignment: .firstTextBaseline) {
                     Text(calories.average.formatted(.number.precision(.fractionLength(0))))
@@ -137,7 +142,7 @@ struct DashboardView: View {
                 }
                 Text("\(calories.loggedDays) of 7 days logged")
                     .font(.subheadline).foregroundStyle(.secondary)
-            }
+            }.multilineTextAlignment(.center).frame(maxWidth: .infinity)
         }
     }
 }

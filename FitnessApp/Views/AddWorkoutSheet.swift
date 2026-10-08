@@ -111,6 +111,8 @@ struct AddExerciseSheet: View {
     @State private var reps = ""
     @State private var weight = ""
     @State private var duration = ""
+    @State private var catalogEntry: ExerciseCatalogEntry?
+    @State private var pickingMovement = false
     private enum Field { case name, sets, reps, weight, duration }
 
     private var weightInKg: Double? {
@@ -128,7 +130,10 @@ struct AddExerciseSheet: View {
         NavigationStack {
             Form {
                 Section("Exercise") {
+                    Button { field = nil; pickingMovement = true } label: { Label("Choose from exercise library", systemImage: "books.vertical") }
                     TextField("Exercise name", text: $name).focused($field, equals: .name)
+                        .onChange(of: name) { _, value in if value != catalogEntry?.name { catalogEntry = nil } }
+                    if let entry = catalogEntry { Text("\(entry.muscles.joined(separator: ", ")) · \(entry.equipment)").font(.caption).foregroundStyle(.secondary) }
                 }
                 Section {
                     input("Sets", text: $sets, field: .sets, unit: nil, decimal: false)
@@ -146,12 +151,13 @@ struct AddExerciseSheet: View {
                     Button("Add") {
                         exercises.append(WorkoutRecord.Exercise(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             sets: Int(sets), reps: Int(reps), weight: weightInKg,
-                            duration: durationInMinutes.map { $0 * 60 }))
+                            duration: durationInMinutes.map { $0 * 60 }, catalogID: catalogEntry?.id))
                         dismiss()
                     }.disabled(!valid)
                 }
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { field = nil } }
             }
+            .sheet(isPresented: $pickingMovement) { NavigationStack { ExerciseLibraryView { entry in name = entry.name; catalogEntry = entry } } }
         }
     }
     private func input(_ title: String, text: Binding<String>, field: Field, unit: String?, decimal: Bool) -> some View {

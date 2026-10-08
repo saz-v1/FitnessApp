@@ -1,10 +1,10 @@
 # FitSwift AI gateway
 
-This is the server-side replacement for embedding an Anthropic key in the iOS app. The provider key stays in the server environment; iOS receives only a short-lived, scoped device/user session token. The client supplies a meal description or a fixed workout focus, not an arbitrary provider prompt or model.
+This is a separate gateway scaffold for a possible future AI update. The current iOS app runs locally and contains no AI client. In a future integration, the provider key stays in the server environment and iOS receives only a short-lived, scoped device/user session token. Requests supply a meal description or a fixed workout focus, not an arbitrary provider prompt or model.
 
 ## Status
 
-The gateway implementation and automated tests are included. It is **not deployed**. There is no existing login or device-attestation service in this project. Calls remain unavailable in the shipped client until you host the gateway and integrate a trusted session issuer. There is deliberately no unauthenticated route, shared app password, hardcoded bearer token, or token-minting endpoint.
+The gateway implementation and automated tests are included. It is **not deployed** or bundled into the iOS app. There is no existing login or device-attestation service in this project. Enabling cloud calls requires hosting, a trusted session issuer and a new iOS client integration. There is deliberately no unauthenticated route, shared app password, hardcoded bearer token, or token-minting endpoint.
 
 For an account-free app, implement Apple App Attest enrollment/assertion verification on the server, including certificate validation, fresh challenges, app identity checks and replay-counter storage, then issue an RS256 token to that verified device. This attestation verifier/token issuer is not implemented here. Alternatively, use an identity provider with a real native sign-in flow. The gateway accepts signed tokens from the configured issuer; it does not perform enrollment itself. [Apple's validation guide](https://developer.apple.com/documentation/devicecheck/validating-apps-that-connect-to-your-server).
 
@@ -34,7 +34,9 @@ Claude 3 Haiku was retired on 20 April 2026. Model selection is now a server set
 
 ## Client integration
 
-Add the non-secret `FitnessAIEndpoint` Info.plist key pointing to your HTTPS `/v1/fitness-ai` URL. A trusted authentication adapter must call `ClaudeService.configureSession(accessToken:expiresAt:)` only after successful sign-in or server-side App Attest verification. Tokens are stored in the device-only Keychain and expire; provider keys are never accepted by this method. The endpoint is absent by default, so cloud actions stay hidden. Each cloud action asks for consent before sharing. The generic `makeRequest(prompt:)` path is disabled to prevent accidental whole-profile uploads.
+Client integration is future work. The former `ClaudeService`, endpoint configuration, session/Keychain code and cloud controls have been deleted from the iOS target. There is no current `configureSession` or `makeRequest` client API to call.
+
+Implement a new client only after hosting an HTTPS `/v1/fitness-ai` endpoint and a trusted authentication or App Attest service. Use a non-secret endpoint setting, obtain short-lived scoped sessions after verified enrollment/sign-in, and store any device session securely. Keep provider credentials server-only. Each cloud action must obtain sharing consent and send only the operation-specific fields accepted by the gateway. Updating the app's local-only guards and privacy disclosures is part of that future release.
 
 The current hosted identity public key is pinned and changed through deployment, not downloaded from caller-controlled JWT headers. Tokens must be RS256, carry the exact issuer/audience, a subject, `iat` and `exp` no more than one hour apart, and `scope: fitness:ai`. Prefer five-minute device sessions. Rotate server signing keys with deployment and replace/revoke previously exposed provider keys at Anthropic. A published client secret cannot be made safe through obfuscation or Keychain storage.
 

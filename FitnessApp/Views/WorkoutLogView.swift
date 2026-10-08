@@ -2,9 +2,11 @@ import SwiftUI
 
 struct WorkoutLogView: View {
     @EnvironmentObject private var userManager: UserManager
+    @EnvironmentObject private var workoutSession: WorkoutSessionStore
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingAddWorkout = false
     @State private var showingInsights = false
+    @State private var showingActiveWorkout = false
     @State private var selectedWorkout: WorkoutRecord?
     @State private var isEditing = false
     @State private var searchText = ""
@@ -36,8 +38,16 @@ struct WorkoutLogView: View {
                     Text("Move at your own pace. Every session counts.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     statistics(sessions: workouts.count, thisWeek: workoutsThisWeek, streak: streak)
+                    Button { showingActiveWorkout = true } label: {
+                        Label(workoutSession.session == nil ? "Start a workout" : "Return to active workout", systemImage: "stopwatch")
+                    }.buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("open-active-workout")
+                    if let draft = workoutSession.session {
+                        Text("\(draft.title) · \(draft.exercises.reduce(0) { $0 + $1.completedSets.count }) completed sets")
+                            .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity).multilineTextAlignment(.center)
+                    }
+                    NavigationLink { ExerciseLibraryView() } label: { Label("Browse exercise library", systemImage: "books.vertical") }
                     Button { showingAddWorkout = true } label: { Label("Log a workout", systemImage: "plus") }
-                        .buttonStyle(AppPrimaryButtonStyle()).accessibilityIdentifier("add-workout")
+                        .buttonStyle(AppSecondaryButtonStyle()).accessibilityIdentifier("add-workout")
                     Button { showingInsights = true } label: {
                         AppCard {
                             HStack(spacing: 14) {
@@ -92,6 +102,7 @@ struct WorkoutLogView: View {
             .sheet(item: $selectedWorkout) { workout in NavigationStack { WorkoutDetailView(workout: workout) } }
             .sheet(isPresented: $showingAddWorkout) { AddWorkoutSheet() }
             .sheet(isPresented: $showingInsights) { NavigationStack { WorkoutInsightsView() } }
+            .sheet(isPresented: $showingActiveWorkout) { ActiveWorkoutView() }
             .onChange(of: workouts.isEmpty) { _, isEmpty in
                 if isEmpty { isEditing = false }
             }
@@ -156,7 +167,7 @@ struct WorkoutCard: View {
                         if !isEditing { Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary) }
                     }
                 }
-            }.buttonStyle(.plain).disabled(isEditing)
+            }.buttonStyle(.plain).disabled(isEditing).accessibilityIdentifier("workout-record-\(workout.id)")
             if isEditing {
                 Button(role: .destructive) { confirmingDelete = true } label: {
                     Image(systemName: "trash").frame(width: 44, height: 44)
@@ -175,6 +186,7 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var userManager: UserManager
     @State private var confirmingDelete = false
+    @StateObject private var catalog = ActivityCatalog.shared
     var body: some View {
         List {
             Section {
@@ -197,7 +209,9 @@ struct WorkoutDetailView: View {
                     ForEach(exercises) { exercise in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(exercise.name).font(.headline)
-                            if let sets = exercise.sets, let reps = exercise.reps {
+                            if let details = exercise.completedSets, !details.isEmpty {
+                                ForEach(Array(details.enumerated()), id: \.element.id) { index, set in CompletedSetSummary(set: set, number: index + 1) }
+                            } else if let sets = exercise.sets, let reps = exercise.reps {
                                 Text("\(sets) sets × \(reps) reps").font(.subheadline).foregroundStyle(.secondary)
                             }
                             if let weight = exercise.weight {
@@ -206,6 +220,9 @@ struct WorkoutDetailView: View {
                             }
                             if let duration = exercise.duration {
                                 Text(duration.workoutDuration).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                            if let id = exercise.catalogID, let entry = catalog.exercise(id: id) {
+                                NavigationLink("Movement reference") { ExerciseReferenceView(entry: entry) }
                             }
                         }.padding(.vertical, 6)
                     }
@@ -219,6 +236,7 @@ struct WorkoutDetailView: View {
         }
         .appForm().navigationTitle("Workout").navigationBarTitleDisplayMode(.inline).appScreen()
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .task { await catalog.load() }
         .alert("Delete this workout?", isPresented: $confirmingDelete) {
             Button("Delete Workout", role: .destructive) {
                 if userManager.deleteWorkout(workout) { dismiss() }
@@ -254,7 +272,10 @@ extension WorkoutRecord.WorkoutType {
 }
 private extension TimeInterval {
     var workoutDuration: String {
-        let minutes = Int(self / 60)
-        return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
+        let seconds = Int(max(0, self))
+        if seconds < 60 { return "\(seconds)s" }
+        let minutes = seconds / 60
+        if minutes >= 60 { return "\(minutes / 60)h \(minutes % 60)m" }
+        return seconds % 60 == 0 ? "\(minutes)m" : "\(minutes)m \(seconds % 60)s"
     }
 }

@@ -1,344 +1,186 @@
 import SwiftUI
 
-/// A view that displays and manages the user's profile information, including measurements,
-/// personal details, goals, and HealthKit integration settings.
 struct ProfileView: View {
-    // MARK: - Properties
-    
-    /// Reference to the user manager for accessing and modifying user data
-    @EnvironmentObject var userManager: UserManager
-    
-    /// Tracks which text field is currently focused for keyboard management
-    @FocusState private var focusedField: Field?
-    @State private var draft = User(height: 170, weight: 70, age: 25, gender: .other, usesMetric: true,
-        activityLevel: .moderatelyActive, weightHistory: [], workoutHistory: [], calorieHistory: [])
-    @AppStorage("healthIntegrationEnabled") private var healthIntegrationEnabled = false
-    @State private var isLoaded = false
+    @EnvironmentObject private var userManager: UserManager
+    @Environment(\.locale) private var locale
+    @FocusState private var focused: Field?
+    @State private var editor: ProfileEditor?
     @State private var savedMessage: String?
-    
-    /// Manages HealthKit authorization and data access
-    @StateObject private var healthKitManager = HealthKitManager.shared
-    
-    /// Service for syncing data with HealthKit
-    @StateObject private var healthKitService = HealthKitService.shared
-    
-    /// Enum defining the focusable fields in the profile form
-    enum Field {
-        case height, weight, goalWeight, age
-    }
-    
-    // MARK: - Body
-    
+    @State private var confirmingReset = false
+    private enum Field { case height, weight, age, goal }
+    private var hasChanges: Bool { editor?.hasChanges(comparedTo: userManager.user) ?? false }
+    private var candidate: User? { editor?.candidate }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    HStack(spacing: 16) {
-                        IconBadge(icon: "person.crop.circle")
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Make it yours").font(.title3.weight(.bold))
-                            Text("Your details help shape your daily estimates.")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }.padding(.vertical, 8)
+                    AppScreenHeader(title: "Make it yours",
+                        subtitle: "Your details shape your daily estimates.", icon: "person.crop.circle")
                 }.listRowBackground(AppTheme.surface)
-                if isLoaded && !draft.hasValidMeasurements {
-                    Text("Enter valid height, weight, goal weight and age before saving.").font(.caption).foregroundColor(.red)
+                Section {
+                    NavigationLink { SettingsView() } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "gearshape").foregroundStyle(AppTheme.accent)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("App settings").font(.headline)
+                                Text("Reminders, appearance, Apple Health & privacy").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, 4)
+                    }.accessibilityIdentifier("profile-settings")
                 }
-                measurementsSection
-                personalSection
-                goalsSection
-                calorieTargetSection
-                syncSection
-                notificationsSection
-                privacySection
+                if let editor {
+                    measurements(editor)
+                    personal(editor)
+                    goals(editor)
+                }
+                Section {
+                    VStack(spacing: 10) {
+                        Label(userManager.calculateDailyCalories() > 0 ? "\(Int(userManager.calculateDailyCalories())) kcal / day" : "Estimate unavailable",
+                            systemImage: "flame").font(.title3.weight(.semibold)).foregroundStyle(AppTheme.accent)
+                        if let goal = userManager.calculateWeeklyCalorieTarget() {
+                            Text("With your saved goal: \(Int(goal)) kcal / day").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        Text("Based on your saved profile. Save changes to update this estimate.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.multilineTextAlignment(.center).frame(maxWidth: .infinity).padding(.vertical, 8)
+                } header: { Text("Your daily estimate") } footer: {
+                    Text("General adult fitness estimate, not a prescribed calorie intake. Needs vary by person.")
+                }
+                if editor != nil && candidate == nil {
+                    Section {
+                        Label("Check your measurements and age. Use valid numbers; goal weight can be left blank.",
+                            systemImage: "exclamationmark.circle").font(.subheadline).foregroundStyle(.red)
+                    }
+                }
                 if let error = userManager.persistenceError {
-                    Section { Text(error).foregroundColor(.red) }
+                    Section { Label(error, systemImage: "exclamationmark.circle").foregroundStyle(.red) }
                 }
             }
-            .appForm()
+            .appForm().navigationTitle("Profile").appScreen()
             .safeAreaInset(edge: .bottom) {
                 if let savedMessage {
                     Label(savedMessage, systemImage: "checkmark.circle.fill")
                         .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.accent)
-                        .padding(14).frame(maxWidth: .infinity)
-                        .background(AppTheme.softAccent)
+                        .padding(14).frame(maxWidth: .infinity).background(AppTheme.softAccent)
+                } else if hasChanges {
+                    HStack {
+                        Text("Unsaved changes").font(.subheadline)
+                        Spacer()
+                        Button("Discard") { confirmingReset = true }.font(.subheadline.weight(.semibold))
+                    }.padding(14).background(AppTheme.surface)
                 }
             }
-            .navigationTitle("Profile")
-            .appScreen()
-            .onAppear {
-                if !isLoaded { draft = userManager.user; isLoaded = true }
-            }
-            .onChange(of: draft) { _, _ in
-                if !draft.hasSameProfile(as: userManager.user) { savedMessage = nil }
-            }
+            .onAppear { if editor == nil { editor = ProfileEditor(user: userManager.user, locale: locale) } }
+            .onChange(of: hasChanges) { _, changed in if changed { savedMessage = nil } }
             .onChange(of: userManager.user) { old, new in
-                if draft.hasSameProfile(as: old) {
-                    draft = new
-                } else {
-                    draft.weightHistory = new.weightHistory
-                    draft.workoutHistory = new.workoutHistory
-                    draft.calorieHistory = new.calorieHistory
+                if editor?.hasChanges(comparedTo: old) == false {
+                    editor = ProfileEditor(user: new, locale: locale)
                 }
+            }
+            .onChange(of: locale) { _, new in
+                if let candidate { editor = ProfileEditor(user: candidate, locale: new) }
             }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        focusedField = nil
-                        if userManager.updateProfile(draft) {
-                            draft = userManager.user
-                            savedMessage = "Profile saved."
-                        }
-                    }
-                    .disabled(!draft.hasValidMeasurements)
+                    Button("Save") { save() }.disabled(candidate == nil).accessibilityIdentifier("profile-save")
                 }
-                ToolbarItem(placement: .keyboard) {
-                    Button("Done") {
-                        focusedField = nil
-                    }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focused = nil } }
+            }
+            .confirmationDialog("Discard unsaved profile changes?", isPresented: $confirmingReset, titleVisibility: .visible) {
+                Button("Discard Changes", role: .destructive) {
+                    focused = nil; editor = ProfileEditor(user: userManager.user, locale: locale); savedMessage = nil
                 }
+                Button("Keep Editing", role: .cancel) {}
             }
         }
     }
 
-    private func measurementBinding(_ keyPath: WritableKeyPath<User, Double>) -> Binding<Double> {
-        Binding(get: { draft[keyPath: keyPath] }, set: { value in
-            draft[keyPath: keyPath] = value
-        })
-    }
-
-    private var privacySection: some View {
-        Section("Privacy & Health Information") {
-            Text("Your journal stays on this device. No account or internet connection is needed.")
-                .font(.caption).foregroundColor(.secondary)
-            NavigationLink("Privacy Policy") {
-                PrivacyPolicyView()
-            }
-        }
-    }
-    
-    // MARK: - View Sections
-    
-    /// Section for managing app notifications
-    private var notificationsSection: some View {
+    private func measurements(_ value: ProfileEditor) -> some View {
         Section {
-            NavigationLink {
-                NotificationSettingsView()
-            } label: {
-                HStack {
-                    Image(systemName: "bell.fill")
-                    Text("Notifications")
-                }
-            }
-        } header: {
-            Text("App Settings")
-        } footer: {
-            Text("Manage your notification preferences to stay on track with your fitness goals.")
-        }
+            Picker("Units", selection: Binding(get: { editor?.profile.usesMetric ?? true }, set: { metric in
+                editor?.setMetric(metric)
+            })) {
+                Text("Metric").tag(true); Text("Imperial").tag(false)
+            }.pickerStyle(.segmented).disabled(candidate == nil).accessibilityIdentifier("profile-units")
+            numericRow("Height", text: text(\.height), field: .height, unit: value.profile.usesMetric ? "cm" : "in",
+                identifier: "profile-height", unitIdentifier: "profile-height-unit")
+            numericRow("Weight", text: text(\.weight), field: .weight, unit: value.profile.usesMetric ? "kg" : "lbs",
+                identifier: "profile-weight", unitIdentifier: "profile-weight-unit")
+        } header: { Text("Measurements") } footer: { Text("Units apply to measurements and your weight goal.") }
     }
-    
-    /// Section containing user's height and weight measurements with unit system toggle
-    private var measurementsSection: some View {
-        Section("Measurements") {
-            Picker("Units", selection: Binding(
-                get: { draft.usesMetric },
-                set: { value in if value != draft.usesMetric { draft.toggleUnits() } }
-            )) {
-                Text("Metric").tag(true)
-                Text("Imperial").tag(false)
-            }.pickerStyle(.segmented).accessibilityIdentifier("profile-units")
-            
-            HStack {
-                Text("Height")
-                Spacer()
-                TextField("Height", value: measurementBinding(\.height), format: .number.precision(.fractionLength(0...2)))
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .height)
-                    .frame(width: 80)
-                Text(draft.usesMetric ? "cm" : "in").foregroundStyle(.secondary)
-                    .accessibilityIdentifier("profile-height-unit")
+    private func personal(_ value: ProfileEditor) -> some View {
+        Section("Personal details") {
+            Picker("Gender", selection: Binding(get: { editor?.profile.gender ?? .other }, set: { editor?.profile.gender = $0 })) {
+                ForEach(User.Gender.allCases) { Text($0.rawValue).tag($0) }
             }
-            
-            HStack {
-                Text("Weight")
-                Spacer()
-                TextField("Weight", value: measurementBinding(\.weight), format: .number.precision(.fractionLength(0...2)))
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .weight)
-                    .frame(width: 80)
-                Text(draft.usesMetric ? "kg" : "lbs").foregroundStyle(.secondary)
-                    .accessibilityIdentifier("profile-weight-unit")
-            }
-        }
-    }
-    
-    /// Section containing personal information including gender, age, and activity level
-    private var personalSection: some View {
-        Section("Personal") {
-            Picker("Gender", selection: $draft.gender) {
-                ForEach(User.Gender.allCases) { gender in
-                    Text(gender.rawValue)
-                        .tag(gender)
-                }
-            }
-            .pickerStyle(.menu)
-            
-            HStack {
-                Text("Age")
-                Spacer()
-                TextField("Age", value: $draft.age, format: .number)
-                    .accessibilityIdentifier("profile-age")
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.numberPad)
-                    .focused($focusedField, equals: .age)
-                    .frame(width: 80)
-                Text("years")
-            }
-            
+            numericRow("Age", text: text(\.age), field: .age, unit: "years", identifier: "profile-age", decimal: false)
             NavigationLink {
                 List(User.ActivityLevel.allCases) { level in
                     Button {
-                        draft.activityLevel = level
+                        editor?.profile.activityLevel = level
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(level.rawValue)
-                                    .foregroundColor(.primary)
-                                Text(getActivityLevelDescription(level))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(level.rawValue).foregroundStyle(.primary)
+                                Text(level.description).font(.caption).foregroundStyle(.secondary)
                             }
-                            
                             Spacer()
-                            
-                            if draft.activityLevel == level {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(AppTheme.accent)
+                            if editor?.profile.activityLevel == level {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.accent)
                             }
-                        }
-                    }
-                }
-                .navigationTitle("Activity Level")
-                .appForm()
+                        }.padding(.vertical, 6)
+                    }.buttonStyle(.plain)
+                }.appForm().navigationTitle("Activity Level").appScreen()
             } label: {
                 HStack {
                     Text("Activity Level")
                     Spacer()
-                    Text(draft.activityLevel.rawValue)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+                    Text(value.profile.activityLevel.rawValue).foregroundStyle(.secondary).multilineTextAlignment(.trailing)
                 }
             }
         }
     }
-    
-    /// Section for setting weight goals and displaying calorie recommendations
-    private var goalsSection: some View {
-        Section("Goals") {
-            HStack {
-                Text("Goal Weight")
-                Spacer()
-                TextField("Optional", value: $draft.goalWeight, format: .number.precision(.fractionLength(0...2)))
-                    .multilineTextAlignment(.trailing)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .goalWeight)
-                    .frame(width: 80)
-                Text(draft.usesMetric ? "kg" : "lbs").foregroundStyle(.secondary)
-            }
-            if draft.goalWeight != nil {
-                Button("Remove weight goal", role: .destructive) { draft.goalWeight = nil }
-            }
-            
-            if let weeklyTarget = userManager.calculateWeeklyCalorieTarget() {
-                Text("Saved profile daily estimate: \(Int(weeklyTarget)) kcal")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-    
-    /// Section displaying the calculated daily calorie target based on user's goals
-    private var calorieTargetSection: some View {
-        Section("Saved Profile Calorie Estimate") {
-            Label("\(Int(userManager.calculateDailyCalories())) kcal / day", systemImage: "flame")
-                .font(.headline).foregroundStyle(AppTheme.accent)
-        }
-    }
-    
-    /// Section for managing HealthKit integration and data synchronization
-    private var syncSection: some View {
+    private func goals(_ value: ProfileEditor) -> some View {
         Section {
-            Toggle("Connect Apple Health", isOn: $healthIntegrationEnabled)
-                .onChange(of: healthIntegrationEnabled) { _, enabled in
-                    if enabled { Task { await healthKitManager.fetchTodaysHealthData() } }
-                }
-            Button(action: {
-                Task {
-                    await healthKitService.syncWithHealthKit()
-                }
-            }) {
-                HStack {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                    Text("Sync with Health")
-                    Spacer()
-                    if healthKitService.isSyncing {
-                        ProgressView()
-                    }
-                }
+            numericRow("Goal Weight", text: text(\.goal), field: .goal, unit: value.profile.usesMetric ? "kg" : "lbs",
+                identifier: "profile-goal", placeholder: "Optional")
+            if !value.goal.isEmpty {
+                Button("Remove weight goal") { editor?.goal = "" }
             }
-            .disabled(healthKitService.isSyncing || !healthIntegrationEnabled)
-            
-            if let lastSync = healthKitService.lastSyncDate {
-                Text("Last synced: \(lastSync.formatted())")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            if let error = healthKitService.syncError {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-        } header: {
-            Text("Health Integration")
-        } footer: {
-            Text("Sync your weight data with Apple Health to keep your records up to date.")
+        } header: { Text("Weight goal") } footer: { Text("Optional. Leave this blank to focus on maintaining your habits.") }
+    }
+    private func text(_ keyPath: WritableKeyPath<ProfileEditor, String>) -> Binding<String> {
+        Binding(get: { editor?[keyPath: keyPath] ?? "" }, set: { editor?[keyPath: keyPath] = $0 })
+    }
+    private func numericRow(_ title: String, text: Binding<String>, field: Field, unit: String,
+                            identifier: String, unitIdentifier: String? = nil, decimal: Bool = true,
+                            placeholder: String = "Amount") -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+            Spacer(minLength: 12)
+            TextField(placeholder, text: text).keyboardType(decimal ? .decimalPad : .numberPad)
+                .multilineTextAlignment(.trailing).focused($focused, equals: field)
+                .frame(minWidth: 70, maxWidth: 140).accessibilityLabel(title).accessibilityIdentifier(identifier)
+            Text(unit).foregroundStyle(.secondary).accessibilityIdentifier(unitIdentifier ?? identifier + "-unit")
         }
     }
-}
-
-// MARK: - Helper Functions
-
-/// Returns a descriptive text for each activity level
-/// - Parameter level: The activity level to get the description for
-/// - Returns: A string describing the activity level
-private func getActivityLevelDescription(_ level: User.ActivityLevel) -> String {
-    switch level {
-    case .sedentary:
-        return "Daily activities only"
-    case .lightlyActive:
-        return "Light exercise 1-3 times/week"
-    case .moderatelyActive:
-        return "Moderate exercise 3-5 times/week"
-    case .veryActive:
-        return "Hard exercise 6-7 times/week"
-    case .extraActive:
-        return "Very hard exercise & physical job"
+    private func save() {
+        focused = nil
+        guard let candidate, userManager.updateProfile(candidate) else { return }
+        editor = ProfileEditor(user: userManager.user, locale: locale)
+        savedMessage = "Profile saved."
     }
 }
 
-#Preview {
-    ProfileView()
-        .environmentObject(UserManager())
-}
-
-private extension User {
-    func hasSameProfile(as other: User) -> Bool {
-        height == other.height && weight == other.weight && age == other.age &&
-        gender == other.gender && usesMetric == other.usesMetric &&
-        activityLevel == other.activityLevel && goalWeight == other.goalWeight
+extension User.ActivityLevel {
+    var description: String {
+        switch self {
+        case .sedentary: return "Daily activities with little planned exercise"
+        case .lightlyActive: return "Light exercise 1–3 times per week"
+        case .moderatelyActive: return "Moderate exercise 3–5 times per week"
+        case .veryActive: return "Hard exercise 6–7 times per week"
+        case .extraActive: return "Very hard exercise and a physically active job"
+        }
     }
 }

@@ -190,6 +190,29 @@ class UserManager: ObservableObject {
         }
     }
 
+    @discardableResult
+    func saveMeal(_ meal: SavedMeal) -> Bool {
+        guard meal.isValid else { return false }
+        return updateUser {
+            var meals = $0.savedMeals ?? []
+            if let index = meals.firstIndex(where: { $0.id == meal.id }) { meals[index] = meal }
+            else { meals.append(meal) }
+            $0.savedMeals = meals
+        }
+    }
+
+    @discardableResult
+    func deleteSavedMeal(_ id: UUID) -> Bool {
+        updateUser { $0.savedMeals?.removeAll { $0.id == id } }
+    }
+
+    /// A recovered finished session can safely retry after saving the journal succeeded.
+    @discardableResult
+    func saveCompletedWorkout(_ workout: WorkoutRecord) -> Bool {
+        if user.workoutHistory.contains(where: { $0.id == workout.id }) { return true }
+        return updateUser { $0.workoutHistory.append(workout) }
+    }
+
     func retryLoadingSavedData() {
         guard !storageReadable,
               let data = try? Data(contentsOf: storageURL),

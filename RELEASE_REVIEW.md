@@ -2,7 +2,7 @@
 
 ## Current status
 
-All project files listed below were reviewed. The current unsigned local-only iOS Release build succeeds and its executable/bundle pass the local-only guard. The final integrated simulator run passed 32 tests (26 unit and six UI), with no failures or skips. The separate future backend gateway passes nine tests. Signing, physical-device checks and submission metadata are still required before release; hosting is not required for this local-only version.
+All project files listed below were reviewed. The current unsigned local-only iOS Release build succeeds and its executable/bundle pass the local-only guard. The combined UK/US catalogue passed all 61 unit tests and a targeted food-library/meal-logging UI test, with no failures or skips. The remaining eleven functional UI flows passed in the preceding offline-workout review; they were not rerun for this catalogue update. The separate future backend is unchanged; its earlier nine tests passed. Signing, physical-device checks and submission metadata are still required before release; hosting is not required for this local-only version.
 
 The owner confirmed both historical Anthropic keys have been revoked and no live keys are configured. Current app source and the built app contain no provider-key signatures. Git history still contains the revoked values; no history rewrite was performed.
 
@@ -44,7 +44,7 @@ All tracked project files and new files are accounted for here. Local Xcode user
 | FitnessApp/Models/HealthKitManager.swift | Awaited queries, guarded refresh, read-only imports, correct units and sleep overlap handling. |
 | FitnessApp/Services/ClaudeService.swift | Deleted for the local-only release. |
 | FitnessApp/Services/HealthKitService.swift | Read-only, serialized, stable-ID weight merge and propagated persistence failures. |
-| FitnessApp/Services/NotificationManager.swift | Explicit authorization, scheduling race handling, denied-permission feedback and privacy-conscious reminder text. |
+| FitnessApp/Services/NotificationManager.swift | Custom schedules, serialized scheduling and cancellation guards, current permissions, next delivery, sound, snooze, logging routes and private reminder text. |
 | FitnessApp/Services/WorkoutAnalyticsService.swift | Deleted; local summaries live in FitnessMetrics. |
 | FitnessApp/Views/DashboardView.swift | Unique-day statistics, calendar ranges, calorie progress and stable UI-test identifiers. |
 | FitnessApp/Views/ProfileView.swift | Draft editing with explicit validated Save, import-preserving commit, optional Health and accurate privacy explanation. |
@@ -79,8 +79,16 @@ All tracked project files and new files are accounted for here. Local Xcode user
 | FitnessApp/Views/AppTheme.swift, FitnessApp/Views/ChartComponents.swift | Shared adaptive colours, cards, buttons, graph periods, summary layouts and compact date labels. |
 | FitnessApp/Views/PrivacyPolicyView.swift | Offline policy explaining local records, optional Health access, reminders, retention and deletion. |
 | FitnessApp/Models/HealthIntegrationPreference.swift, LocalizedDecimal.swift | Invalidates stale Health reads/imports and parses complete decimal input for the current locale. |
+| FitnessApp/Models/ProfileEditor.swift, ReminderSettings.swift | Exact unedited profile values, full input validation, legacy reminder migration and validated custom times/days. |
+| FitnessApp/Views/SettingsView.swift | Appearance choices, reminders, optional Health controls, journal counts and local privacy information. |
+| FitnessAppTests/ProfileEditorTests.swift, ReminderTests.swift | Twelve profile and reminder regressions, including input precision, old schedules, permission denial, stale completion, snooze, routing and failures. |
 | FitnessApp/Models/UITestFixtures.swift | Synthetic records available only in isolated Debug UI-test stores; absent from Release builds. |
 | UI_REVIEW.md | Recorded interface/graph changes, visual checks and regression results. |
+| FitnessApp/Models/ActivityCatalog.swift, SavedMeal.swift | Once-only off-main catalogue decoding, bounded local search, stable source IDs, mass-based portions, nutrient snapshots and validated reusable meals. |
+| FitnessApp/Models/WorkoutSession.swift, Services/WorkoutSessionStore.swift | Timestamp timers, individual sets/lap splits, protected recoverable drafts, pause/resume, write-before-publish actions, idempotent final saving and serialized local rest alerts. |
+| FitnessApp/Resources/foods.json, foods-uk.json, exercises.json, CATALOG_SOURCES.md, Tools/build_food_catalog.py, Tools/build_cofid_catalog.py | 10,625 combined US/UK food references, 106 original exercise references, source licences/hashes and reproducible snapshots. UK drink densities, missing nutrients and duplicate source codes are handled explicitly. No runtime download. |
+| FitnessApp/Views/ActiveWorkoutView.swift, ReferenceLibraryViews.swift, SavedMealsView.swift | Live controls, searchable references, portion/nutrient display, meal creation/reuse/deletion, optional alerts and keep-awake control. |
+| FitnessAppTests/OfflineCatalogTests.swift, WorkoutSessionTests.swift, WorkoutRestAlertTests.swift | Twenty meal/catalogue/session/alert regressions covering legacy decoding, canonical weights, failure recovery, duplicate prevention, exact splits, permission denial and stale-alert cancellation. |
 | SECURITY.md, RELEASE_REVIEW.md | Revocation status, architecture boundaries, review evidence and outstanding release requirements. |
 
 ## Earlier verification results
@@ -104,6 +112,18 @@ For a future AI update, implement and host the trusted session issuer, client en
 
 This review does not certify the absence of every defect, production infrastructure security or App Store approval. Fitness estimates remain general guidance rather than clinically validated advice.
 
+## Offline libraries and active workouts
+
+Final production Release build succeeded at `/tmp/FitnessAppActiveWorkoutRelease`. Source, compiled-bundle and credential guards, native model harness and verification-script syntax checks passed.
+
+The final targeted simulator run passed all 58 unit tests and the strength-set/rest and profile-discard UI checks, with zero failures/skips: `/tmp/FitnessAppOfflineWorkoutFinalRegression.xcresult`. The preceding full run passed the other ten functional UI checks, including saved meal reuse retaining both entries, USDA portions, timed laps, reminders, charts and manual workout deletion: `/tmp/FitnessAppOfflineWorkoutFinalVerification.xcresult`. Its two failures were a duplicate timer accessibility identifier (corrected) and a simulator event timeout (passed on retry). Some simulator runs experienced long launch/idle delays; they are not physical-device performance measurements. Four launch configurations also passed in the earlier complete run.
+
+Food/meal/workout screenshots were inspected. The active screen has a compact session/rest summary, balanced rep buttons, reachable set completion and a vertical header for accessibility text sizes. Existing light-mode colours are preserved. Normal simulator installation and launch succeeded without test arguments or journal erasure.
+
+New records, saved meals and active drafts remain protected local data. Reference searches run offline; food snapshots preserve past values. Workout IDs prevent duplicate recovery saves. Rest notifications have generic content and require explicit permission. No AI, camera or motion-sensor counting was introduced. Full history record-editing forms remain unimplemented; the existing Edit control is deletion mode.
+
+Physical-device timer suspension/relaunch, rest notification delivery under Focus/denial, protected-file recovery, screen locking and battery/frame performance still require verification.
+
 ## Subsequent UI and graph verification
 
 The redesigned app passed 20 tests (14 unit and six UI) on an isolated iPhone 16e / iOS 26.3.1 simulator. Result bundle: /tmp/FitnessAppGraphsVerifiedTests.xcresult. The unsigned Release build also passed after the final graph label/layout changes. See [UI review](UI_REVIEW.md) for the added time ranges, selection, large-text layouts and remaining signing limitation.
@@ -118,3 +138,22 @@ The redesigned app passed 20 tests (14 unit and six UI) on an isolated iPhone 16
 - Revised dark dashboard and calorie graph were visually inspected using synthetic data in the isolated test store. Light palette values are unchanged. The ordinary local-only app was installed on the user's simulator without adding fixtures to its journal.
 
 On-device data is not considered collected for App Store privacy answers when it never leaves the device; see [Apple's App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/). The current policy is bundled in the app. A stable hosted policy URL with publisher identity/contact is still required for the store listing.
+
+## Profile, settings and reminder verification
+
+The updated app passed 46 tests: 38 unit and eight UI, with zero failures or skips. Result: /tmp/FitnessAppSettingsVerifiedTests.xcresult. Coverage includes reminder migration and persistence, chosen days/times, denied permissions without launch prompts, rescheduling/disabling races, sound changes, snooze and logging routes. UI checks verify reminder selections across relaunch, strict profile input, confirmed draft discard and existing logging/graph flows.
+
+Debug test launches normally reset preferences for isolation; a Debug-only preservation flag is used by the relaunch persistence test. Regular app launches never use either test mode. Captured screenshots were reviewed for the centred dashboard, profile and custom reminder controls. Production builds are unsigned; physical-device notification delivery, Focus behavior and action routing remain device checks.
+# Appearance review and yearly weight range — 8 October 2026
+
+The final appearance restores the previous light/dark palette and removes card/button outlines. The weight graph adds a one-year (365-day) range; its calendar boundaries and inclusion of a 330-day-old measurement were checked directly. Calorie/workout graph range choices remain 7/30/90 days. Secondary buttons now display the existing disabled colours when unavailable.
+
+Final Debug simulator and unsigned iPhone Release builds passed: `/tmp/fitness-contrast-debug.log`, `/tmp/fitness-contrast-release.log`. Source/app-bundle local-only checks, credential checks and diff whitespace checks passed. This small appearance/range update did not rerun the full unit/UI suite; its preceding results below still apply to that earlier revision. The intermediate contrast proposal and its screenshots were reverted following visual feedback.
+
+## Combined UK and US food references
+
+The app now bundles 7,793 unchanged USDA SR Legacy entries and 2,832 usable CoFID 2021 entries (10,625 total). Source filters and labels distinguish overlapping names; logged portions and reusable meals retain their original nutrition and provenance. Legacy USDA-only snapshots continue to decode. Source licences, workbook/archive hashes, exclusions, duplicate-code handling and drink-density normalization are documented in `CATALOG_SOURCES.md`.
+
+All 61 unit tests passed in `/tmp/FitnessAppCombinedFoodsVerifiedTests.xcresult`. The final targeted UI test passed in `/tmp/FitnessAppCombinedFoodsFinalUI.xcresult`, covering UK/US filtering, local search, a portion and saving a meal. Earlier attempts exposed a filter-settling assertion and an offscreen test button; the selector uses explicit nonoptional choices and the test waits for filtered rows and scrolls to its action. The remaining UI suite was not repeated. A simulator diagnostic-collection warning did not prevent the final successful test result.
+
+The final unsigned iPhone Release build passed (`/tmp/fitness-combined-foods-release-final.log`), as did source/bundle local-only, credential and whitespace guards. All three bundled catalogue resources match their source hashes. The Debug update was installed and launched locally without erasing the normal journal. The restored palette and border-free cards/buttons are preserved. Device signing and physical-device checks remain outstanding as listed above.

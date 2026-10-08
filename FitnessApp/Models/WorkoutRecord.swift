@@ -41,15 +41,19 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         let reps: Int?
         let weight: Double? // in kg
         let duration: TimeInterval? // in seconds
+        let catalogID: String?
+        let completedSets: [CompletedWorkoutSet]?
         
         // Initialize with default UUID if not provided
-        init(id: UUID = UUID(), name: String, sets: Int? = nil, reps: Int? = nil, weight: Double? = nil, duration: TimeInterval? = nil) {
+        init(id: UUID = UUID(), name: String, sets: Int? = nil, reps: Int? = nil, weight: Double? = nil, duration: TimeInterval? = nil,
+             catalogID: String? = nil, completedSets: [CompletedWorkoutSet]? = nil) {
             self.id = id
             self.name = name
             self.sets = sets
             self.reps = reps
             self.weight = weight
             self.duration = duration
+            self.catalogID = catalogID; self.completedSets = completedSets
         }
     }
     
@@ -64,4 +68,4 @@ struct WorkoutRecord: Identifiable, Codable, Equatable {
         self.caloriesBurned = caloriesBurned
         self.notes = notes
     }
-} 
+}
