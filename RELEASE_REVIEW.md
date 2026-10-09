@@ -2,7 +2,7 @@
 
 ## Current status
 
-All project files listed below were reviewed. The current unsigned local-only iOS Release build succeeds and its executable/bundle pass the local-only guard. The combined UK/US catalogue passed all 61 unit tests and a targeted food-library/meal-logging UI test, with no failures or skips. The remaining eleven functional UI flows passed in the preceding offline-workout review; they were not rerun for this catalogue update. The separate future backend is unchanged; its earlier nine tests passed. Signing, physical-device checks and submission metadata are still required before release; hosting is not required for this local-only version.
+All project files listed below were reviewed. The current local-only iOS Release build succeeds and its executable/bundle pass the local-only guard. The Health refresh update passed all 70 unit tests, including nine new partial-data and import regressions. A development build was signed and installed on the owner's connected iPhone; remote launch was blocked because the phone was locked. The combined UK/US catalogue's targeted UI flow and the preceding offline-workout UI flows were not rerun for this Health update. The separate future backend is unchanged; its earlier nine tests passed. Distribution signing, physical-device behavior checks and submission metadata are still required before release; hosting is not required for this local-only version.
 
 The owner confirmed both historical Anthropic keys have been revoked and no live keys are configured. Current app source and the built app contain no provider-key signatures. Git history still contains the revoked values; no history rewrite was performed.
 
@@ -41,9 +41,10 @@ All tracked project files and new files are accounted for here. Local Xcode user
 | FitnessApp/Models/WorkoutRecord.swift | Reviewed Codable model and stable workout/exercise identity; validation centralized in User. |
 | FitnessApp/Models/FitnessMetrics.swift | Added shared calendar-day totals and unique-day streak calculations. |
 | FitnessApp/Models/Achievement.swift | Protected unlock migration, live progress, merged unlocks and corrected consecutive-day/meal/week logic. |
-| FitnessApp/Models/HealthKitManager.swift | Awaited queries, guarded refresh, read-only imports, correct units and sleep overlap handling. |
+| FitnessApp/Models/HealthKitManager.swift | Independent category reads, empty versus zero readings, stale-refresh rejection, stable measurement/workout imports, correct units and sleep overlap handling. |
 | FitnessApp/Services/ClaudeService.swift | Deleted for the local-only release. |
 | FitnessApp/Services/HealthKitService.swift | Read-only, serialized, stable-ID weight merge and propagated persistence failures. |
+| FitnessApp/Services/HealthKitReader.swift | Injectable read-only query adapter with calendar-day statistics, bounded sample queries and no-data error classification. |
 | FitnessApp/Services/NotificationManager.swift | Custom schedules, serialized scheduling and cancellation guards, current permissions, next delivery, sound, snooze, logging routes and private reminder text. |
 | FitnessApp/Services/WorkoutAnalyticsService.swift | Deleted; local summaries live in FitnessMetrics. |
 | FitnessApp/Views/DashboardView.swift | Unique-day statistics, calendar ranges, calorie progress and stable UI-test identifiers. |
@@ -57,7 +58,7 @@ All tracked project files and new files are accounted for here. Local Xcode user
 | FitnessApp/Views/WorkoutLogView.swift | Explicit deletion, empty states, one grouped snapshot and lazy history; no cloud controls. |
 | FitnessApp/Views/WorkoutInsightsView.swift | Redesigned local patterns, summary cards and an interactive session chart with time ranges. |
 | FitnessApp/Views/TargetedWorkoutView.swift | Deleted for the local-only release. |
-| FitnessApp/Views/HealthDataView.swift | Optional connection action, read-access wording and sleep time-window label. |
+| FitnessApp/Views/HealthDataView.swift | Optional connection, manual refresh/status, missing-reading indicators, Steps permission guidance and precise stand/heart/sleep labels. |
 | FitnessApp/Views/AchievementsView.swift | Refreshes on saved changes and corrected next-level points. |
 | FitnessApp/Views/NotificationSettingsView.swift | Explicit toggles, async scheduling and visible authorization errors. |
 | FitnessApp/Assets.xcassets/Contents.json, AccentColor.colorset/Contents.json, AppIcon.appiconset/Contents.json | Reviewed and validated asset metadata. |
@@ -65,6 +66,7 @@ All tracked project files and new files are accounted for here. Local Xcode user
 | FitnessApp/Preview Content/Preview Assets.xcassets/Contents.json | Reviewed and validated preview metadata. |
 | FitnessAppTests/FitnessAppTests.swift | Thirteen tests for calculations, protected persistence, migration, failed writes, units, history, achievements and offline manual logging. |
 | FitnessAppTests/FitnessMetricsTests.swift, NumericInputTests.swift, ImportRegressionTests.swift, AchievementRegressionTests.swift, HealthIntegrationTests.swift | Focused summary/DST, locale, no-op import, achievement and Health-disconnect regressions. |
+| FitnessAppTests/HealthRefreshTests.swift | Nine synthetic-query regressions for missing Watch data, partial failures, empty versus zero, reconnect races, bounded queries, stable weights and overlapping sleep. |
 | FitnessAppUITests/FitnessAppUITests.swift | Six functional flows, including graph ranges, profile unit labels and confirmed workout deletion, with isolated state and stable identifiers. |
 | FitnessAppUITests/FitnessAppUITestsLaunchTests.swift | Isolated launch setup; screenshot test verified across four launch configurations. |
 | Backend/gateway.mjs | Authenticated fixed-operation gateway, validation, quotas, bounded provider call and error handling. |
@@ -103,7 +105,7 @@ All tracked project files and new files are accounted for here. Local Xcode user
 
 ## Remaining release requirements
 
-1. **Owner signing and archive:** verify the current com.syed.FitnessApp identifier is registered to the owner, select the owner's team/provisioning, archive and validate in App Store Connect. The Health Records capability error is removed; the attempted signed command-line build still encountered codesign errSecInternalComponent, so device signing remains unverified. Review the generated privacy report.
+1. **Distribution signing and archive:** archive and validate the current com.syed.FitnessApp app in App Store Connect, using the owner's distribution configuration, and review the generated privacy report. Basic HealthKit development signing and installation now succeed on the owner's iPhone, superseding the earlier command-line codesign failure. A development build does not establish App Store archive validation.
 2. **Physical-device checks:** test Health denied/partial/revoked access, overlapping sleep sources, protected saving while locked and recovery after unlocking, app restart, reminder permission denial, notification delivery and unit changes. Simulator results cannot establish these behaviors on a real device.
 3. **Privacy and store information:** publish a stable privacy-policy URL with operator identity/contact, configure support information and accurate App Privacy answers, and complete screenshots, age rating and review notes. See [Apple HealthKit privacy](https://developer.apple.com/documentation/healthkit/protecting-user-privacy) and [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/).
 4. **Legacy data:** original versions mixed kilograms and pounds without recording historical units, and some Health imports had random IDs. Historical units cannot safely be inferred, and older imported samples may be imported once more. Records were preserved rather than guessed or deleted. Migration cannot erase copies already present in old device backups.
@@ -156,4 +158,12 @@ The app now bundles 7,793 unchanged USDA SR Legacy entries and 2,832 usable CoFI
 
 All 61 unit tests passed in `/tmp/FitnessAppCombinedFoodsVerifiedTests.xcresult`. The final targeted UI test passed in `/tmp/FitnessAppCombinedFoodsFinalUI.xcresult`, covering UK/US filtering, local search, a portion and saving a meal. Earlier attempts exposed a filter-settling assertion and an offscreen test button; the selector uses explicit nonoptional choices and the test waits for filtered rows and scrolls to its action. The remaining UI suite was not repeated. A simulator diagnostic-collection warning did not prevent the final successful test result.
 
-The final unsigned iPhone Release build passed (`/tmp/fitness-combined-foods-release-final.log`), as did source/bundle local-only, credential and whitespace guards. All three bundled catalogue resources match their source hashes. The Debug update was installed and launched locally without erasing the normal journal. The restored palette and border-free cards/buttons are preserved. Device signing and physical-device checks remain outstanding as listed above.
+The final unsigned iPhone Release build passed (`/tmp/fitness-combined-foods-release-final.log`), as did source/bundle local-only, credential and whitespace guards. All three bundled catalogue resources match their source hashes. The Debug update was installed and launched locally without erasing the normal journal. The restored palette and border-free cards/buttons are preserved. At that review, device signing and physical-device checks remained outstanding; the development signing result below supersedes that earlier limitation.
+
+## HealthKit partial-data refresh
+
+The previous refresh awaited four throwing statistics queries together. An empty Watch category could therefore discard valid iPhone steps and energy and skip later heart, sleep and workout reads. Apple documents this statistics-query [no-data error](https://developer.apple.com/documentation/healthkit/hkerror/errornodata). Each category now completes independently; empty data is handled separately from an actual query failure, and successful categories remain visible. Permission-request completion is not treated as proof that every read permission was granted.
+
+Daily cumulative quantities use one calendar-day window. Latest-sample queries exclude future samples; overlapping sleep stages are combined and clipped to the displayed period. Latest weight uses the Health sample's stable ID and timestamp, preserving newer manual changes. Disconnect/reconnect invalidates older refresh results. Missing readings show a dash, actual zero remains zero, and the Health screen, settings and dashboard provide refresh controls. Stand duration retains fractional hours and the heart reading shows its timestamp. The existing palette and border-free styles are preserved.
+
+All 70 unit tests passed with zero failures or skips: `/tmp/FitnessAppHealthFixUnitTests.xcresult`. Nine new tests reproduce partial access and empty Watch categories with synthetic samples; they do not inspect the owner's private Health data. The final unsigned iPhone Release build passed (`/tmp/fitness-health-fix-release-final.log`), as did source/bundle local-only, credential and whitespace checks. A development-signed Debug build passed (`/tmp/fitness-health-fix-device.log`) and was installed on the owner's connected iPhone with the existing bundle identifier, without uninstalling the app or erasing its journal. Remote launch was rejected because the iPhone was locked; the owner must unlock and open the app to check their actual readings and read permissions. This update did not rerun the earlier functional UI suite or validate an App Store archive.

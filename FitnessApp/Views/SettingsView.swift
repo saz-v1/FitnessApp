@@ -40,6 +40,15 @@ struct SettingsView: View {
                 if healthEnabled {
                     NavigationLink("View Apple Health activity") { HealthDataView() }
                     Button {
+                        Task { await health.fetchTodaysHealthData() }
+                    } label: {
+                        HStack {
+                            Label("Refresh Apple Health", systemImage: "arrow.clockwise")
+                            Spacer()
+                            if health.isRefreshing { ProgressView() }
+                        }
+                    }.disabled(health.isRefreshing)
+                    Button {
                         Task { await sync.syncWithHealthKit() }
                     } label: {
                         HStack {

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var userManager: UserManager
+    @AppStorage("healthIntegrationEnabled") private var healthEnabled = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showingBMIDetail = false
     @State private var showingCalorieDetail = false
@@ -39,6 +40,7 @@ struct DashboardView: View {
                     AchievementSummaryCard(userManager: userManager)
                 }.padding(20).frame(maxWidth: 760).frame(maxWidth: .infinity)
             }
+            .refreshable { if healthEnabled { await HealthKitManager.shared.fetchTodaysHealthData() } }
             .navigationTitle("Dashboard")
             .appScreen()
             .sheet(isPresented: $showingBMIDetail) { NavigationStack { BMIDetailView() } }
@@ -173,8 +175,8 @@ struct HealthDataSummaryCard: View {
         }
     }
     @ViewBuilder private var activityValues: some View {
-        Label("\(health.steps.formatted()) steps", systemImage: "figure.walk")
-        Label("\(Int(health.activeEnergy)) active kcal", systemImage: "flame")
+        Label("\(health.availableReadings.contains(.steps) ? health.steps.formatted() : "—") steps", systemImage: "figure.walk")
+        Label("\(health.availableReadings.contains(.activeEnergy) ? String(Int(health.activeEnergy)) : "—") active kcal", systemImage: "flame")
     }
 }
 

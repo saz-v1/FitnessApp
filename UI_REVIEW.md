@@ -71,3 +71,9 @@ The shared calendar range code was checked directly: a measurement 330 days old 
 - Saved meals and history retain their original nutrition, with UK/US labels. Existing USDA-only meals remain compatible.
 
 All 61 unit checks and the targeted UK/US filtering, search, portion and meal-save UI flow passed: `/tmp/FitnessAppCombinedFoodsVerifiedTests.xcresult`, `/tmp/FitnessAppCombinedFoodsFinalUI.xcresult`. The UK library and portion screenshots were inspected. The unsigned iPhone Release build and offline guards passed; the update runs in the local simulator. The earlier palette and border removal remain unchanged. The remaining UI flows were not rerun for this catalogue update.
+
+## Apple Health readings and refresh
+
+The dashboard and Health screen now distinguish missing or unshared readings with a dash, while an actual zero remains visible. The Health screen has a refresh button, loading indicator, last-update time and guidance for enabling Steps in Apple's app permissions. Settings also has a refresh action, and pulling down the dashboard refreshes connected Health readings. Stand duration includes fractional hours and the latest heart reading includes its timestamp. Existing colours and border-free cards remain unchanged.
+
+The query regressions passed with all 70 unit tests in `/tmp/FitnessAppHealthFixUnitTests.xcresult`. Release and development-signed iPhone builds passed, and the update was installed on the owner's iPhone. Remote launch was blocked by the device lock. Actual private Health readings, permission changes and these controls still require checking after opening the app on that phone; no new screenshots or full UI-suite results are claimed for this update.

@@ -59,7 +59,7 @@ The directories describe responsibilities: some observable managers are in `Mode
 | `ActivityCatalog.swift` | Food/exercise reference types and their shared loader. Validates and combines resources off the main thread, caches food lookup/search keys and supports bounded searches and source/category filters. |
 | `FitnessMetrics.swift` | Calendar-day calorie totals, workout summaries and unique-day streaks shared by charts, dashboard cards and achievements. Excludes future entries from summaries. |
 | `Achievement.swift` | Achievement definitions and `AchievementManager`, including progress, unlocks, points and levels. Unlock IDs are persisted through `UserManager`. |
-| `HealthKitManager.swift` | Optional read-only Health authorization, activity readings, latest measurements, overlapping sleep intervals and stable workout-history imports. |
+| `HealthKitManager.swift` | Optional read-only Health authorization, independent activity reads, availability/refresh state, latest measurements, overlapping sleep intervals and stable workout-history imports. Empty or failing categories do not discard successful readings. |
 | `HealthIntegrationPreference.swift` | Connection preference and revision checks that prevent a pending Health read from applying after disconnection or reconnection. |
 | `ReminderSettings.swift` | Meal/workout/weight reminder kinds, validated times and weekdays, notification identifiers and legacy preference migration. |
 | `LocalizedDecimal.swift` | Complete, locale-aware decimal parsing for measurements and amounts; rejects malformed, ambiguous and nonfinite input. |
@@ -70,6 +70,7 @@ The directories describe responsibilities: some observable managers are in `Mode
 | File in `FitnessApp/Services/` | Responsibility |
 | --- | --- |
 | `HealthKitService.swift` | Explicit import of the last year of Health weight history. Preserves Health sample IDs, normalizes kilograms and merges through `UserManager` with visible failure feedback. |
+| `HealthKitReader.swift` | Injectable read-only Health query adapter. Uses calendar-day statistics for cumulative values and date-bounded sample queries, with common no-data error classification. |
 | `NotificationManager.swift` | System notification adapter, permission state, custom reminder scheduling, next-delivery information, sound, snooze and logging routes. Serializes changes and guards against stale scheduling completions. |
 | `WorkoutSessionStore.swift` | Protected active-session storage and user actions: select movements, record reps/laps, complete sets, pause, rest, finish or discard. Recovers drafts, avoids duplicate journal saves and manages optional local rest alerts. |
 
@@ -125,13 +126,15 @@ The three main tabs each provide their own navigation. Settings and the referenc
 
 **Weight and profile:** weight entry converts the chosen display unit to kilograms before appending a `WeightRecord`. Profile edits use a separate draft; committing copies profile fields into the latest journal so records imported while editing are preserved. Profile height, current weight and goal follow the selected display units; weight history and completed-set weights use kilograms.
 
-**Health and reminders:** Health reads require the connection preference and system authorization, then either update visible readings or merge validated records. Reminder preferences produce local calendar notifications; their logging actions return to `ContentView`, which opens the corresponding entry sheet. Workout rest alerts use the active session's remaining rest deadline.
+**Health and reminders:** Health reads require the connection preference and system authorization, then either update visible readings or merge validated records. Each category completes independently, so missing Watch data cannot block iPhone steps or workout imports. A dash indicates an empty/unshared reading; an actual zero remains a valid reading. Refresh is available on the Health screen, in settings and by pulling down the dashboard. Reminder preferences produce local calendar notifications; their logging actions return to `ContentView`, which opens the corresponding entry sheet. Workout rest alerts use the active session's remaining rest deadline.
 
 ## Security and data
 
 Primary records and achievement unlocks use atomic local files with complete iOS file protection and backup exclusion. Legacy UserDefaults records migrate after successful writes. Failed changes are not published, and unreadable saved files are preserved. Reminder preferences stay in app-local UserDefaults, declared in the privacy manifest. Weight-history values are kilograms; unit toggles preserve measurement precision. Older mixed-unit records require review because their original unit was not recorded.
 
 Apple Health access is optional and starts after an explicit connection action. Local tracking works without it. Profile edits use an explicit Save button. Personal information is covered when the app is inactive to reduce app-switcher exposure. This is a fitness journal, not clinically validated medical software.
+
+Running on an iPhone does not automatically grant Health read access. Enable the connection in FitSwift and choose the readings to share in Apple's permission sheet. If steps are missing, review FitSwift's app permissions inside Apple Health and enable Steps, then return to FitSwift and refresh. HealthKit deliberately does not reveal whether missing data means no samples or denied read access. Stand time displays cumulative time spent standing, separately from the Apple Watch Stand ring's completed hours.
 
 Normal launches use the app's Application Support directory:
 
@@ -208,6 +211,7 @@ Replace `YOUR_SIMULATOR_UDID` with an installed simulator's identifier. The unsi
 | `NumericInputTests.swift` | Local decimal separators and rejection of malformed or ambiguous amounts. |
 | `ImportRegressionTests.swift` | Idempotent Health imports, manual-weight preservation and avoiding redundant writes. |
 | `HealthIntegrationTests.swift` | Explicit connection, invalidation after disconnect/reconnect and safe Health-value bounds. |
+| `HealthRefreshTests.swift` | Valid iPhone steps with missing Watch categories, partial failures, empty versus zero readings, stale refresh rejection, calendar boundaries, stable measurement imports and overlapping sleep stages. Uses synthetic query results without personal Health data. |
 | `AchievementRegressionTests.swift` | Future-entry exclusions and goal tolerance across display units. |
 | `ProfileEditorTests.swift` | Exact untouched values, localized edits, incomplete input and optional goal removal. |
 | `ReminderTests.swift` | Schedule migration, custom days/times, permission denial, delayed completion, sound, snooze, routing and scheduling errors. |
